@@ -195,3 +195,15 @@ Owner / branch or commit / files changed / checks actually run / remaining block
   Output goes to `data/demo-recording/phantom-demo.mp4` (git-ignored). Set `PHANTOM_BROWSER_CHANNEL` (default `chrome`; `msedge` on Windows).
 - **Recorded live on 1 Nov:** 8 PHANTOM calls, then Materialize of 6 routes (**17/17** tests), then REAL create team / team page / projects. **1:53**, kept outside the repo as `phantom-demo-backup.mp4` (shared with the team separately).
 - **Honest edit:** the recorder's own 5-req/min pacing stall (about 40 s of a frozen screen while waiting to send the 6th call) is trimmed to 2 s. The proxy itself answered in 0.5–4.8 s. The Materialize section is untrimmed real time.
+
+### Abhik: "Your backend" page (mentor feedback)
+
+- **Feedback:** after Materialize, a non-technical judge can't tell the backend was created; the dashboard looks like the backend.
+- **Added a full-screen "Your backend" page** at `localhost:5174/#/backend`, opened by **Open your backend →** in the Materialize panel (when done) or **Your backend →** in the header.
+  - **No backend yet** (ghost): every feature is listed in plain English ("Create a team", "Upvote a project") as **AI stand-in**.
+  - **Being built:** a spinner plus 4 plain-English steps that follow the live job, and the latest Codex output line.
+  - **Live:** a green check, "Your backend is live.", N features on real code, tests passed, lines written by Codex, AI → real response time (e.g. 816 ms → 1 ms), every feature **✓ Real code**, and the actual `generated/handlers.ts`.
+  - **Failed:** "This build didn't pass its tests"; nothing switched.
+- Everything shown is real: the new `GET /phantom/backend` returns state, routes, the latest job, the generated source and the test files (nothing generated while no route is REAL).
+- The dashboard is relabelled **CONTROL ROOM**, with "it watches the app's requests. It is not the backend."
+- **Checks:** proxy 63/63 (+2 endpoint tests), dashboard 29/29 (+12: plain-English labels and all page states), builds and typechecks clean. Screenshots were taken at 1920 and 960 wide in all states (mocked data in a separate headless browser). **Not yet run end to end with a live Materialize:** do it in the next rehearsal.

@@ -90,6 +90,9 @@ export function MaterializePanel({
                 : "Materialization complete"}
             </strong>
             <p>Verification complete. Selected routes are now REAL.</p>
+            <a className="open-backend" href="#/backend" target="_blank" rel="noopener">
+              Open your backend →
+            </a>
           </>
         ) : job.phase === "failed" ? (
           <>

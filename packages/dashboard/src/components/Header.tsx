@@ -74,7 +74,7 @@ export function Header({
           <span>
             phantom<span className="wordmark-dot">.</span>
           </span>
-          <span className="console-label">MISSION CONTROL</span>
+          <span className="console-label">CONTROL ROOM</span>
         </a>
         <div className="top-actions">
           <span className={`connection connection-${connection}`} role="status">
@@ -85,6 +85,9 @@ export function Header({
                 ? "Connecting"
                 : "Reconnecting"}
           </span>
+          <a className="quiet-button backend-link" href="#/backend" target="_blank" rel="noopener">
+            Your backend →
+          </a>
           <button
             className="quiet-button reset-button"
             onClick={onReset}
@@ -99,6 +102,9 @@ export function Header({
           <span className="eyebrow">THE FRONTEND IS THE SPEC.</span>
           <h1>Watch your backend become real.</h1>
           <p>Every request is a blueprint. Every click is a test.</p>
+          <p className="not-backend">
+            This is Phantom’s control room: it watches the app’s requests. It is not the backend.
+          </p>
         </div>
         <div className="runtime-card">
           <span className="runtime-label">INFERENCE ENGINE</span>
