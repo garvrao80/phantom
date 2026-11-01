@@ -6,7 +6,8 @@
   "engines": { "node": ">=20" },
   "scripts": {
     "dev": "pnpm -r --parallel --stream dev",
-    "test": "pnpm --filter @phantom/proxy test",
+    "test": "pnpm -r test",
+    "build": "pnpm -r --if-present build",
     "reset": "node scripts/reset.mjs",
     "smoke": "bash scripts/smoke.sh"
   }

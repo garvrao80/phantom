@@ -7,7 +7,7 @@ All humans and coding agents: read this file before starting and pushing. Update
 | Owner | Scope | State / evidence | Handoff |
 |---|---|---|---|
 | Abhik | Root/proxy scaffold, shared types, Store, schemas, model loop, routing, events, server | Phases 1.1–1.3, 2, 3, 4, 5 on main; `pnpm test` 58/58 and `tsc` pass; live Cerebras smoke passed; **Materialize wired and verified live end to end** | Core done. Next: help with demo hardening and the 5-route timing; see Abhik handoff below |
-| Lakshay | Demo app and dashboard | Awaiting owner update | Use agreed SSE events and POST /phantom/materialize response |
+| Lakshay | Demo app and dashboard | Implemented on lakshay/frontends; frontend tests and builds pass; see checks below | Rebased onto Materialize HTTP wiring; full live UI rehearsal pending; see Lakshay handoff below |
 | Garv | Materialize, replay gate, handler loading, reset/smoke, demo ops | Endpoint changes reviewed; 58 core + 8 isolated tests pass; strict typecheck passes; five-route live rehearsal blocked on votes/upvotes mismatch | HTTP wiring landed; two core blockers below; UI still pending |
 
 ## Garv: integration contract
@@ -123,4 +123,30 @@ Owner / branch or commit / files changed / checks actually run / remaining block
 - **Per-ID cache collision fixed:** the GET cache key and the replay lookup now include the actual path (`/teams/team_1` ≠ `/teams/team_2`). There are regression tests for both. Garv's `scripts/core-cache-fix.patch` is no longer needed.
 - **`votes` contract fixed:** a new `phantom.notes.md` at the repo root holds plain-English app notes. They're sent with every phantom prompt, so they pin `votes`, upvote = +1, leaderboard order, and so on. `createApp` loads them by default (override with `PHANTOM_NOTES_FILE` or `notes:`). Tests pass `notes: ''`.
 - **Checks:** core 61/61, typecheck clean. **Garv's live five-route `scripts/verify-http-materialize.ts` PASSES:** phantom latencies 886/2561/813/2117/923 ms, Materialize **62 s**, **16/16** gate tests, reset/duplicate 409, then all five routes REAL with data kept and `votes` going 1 → 2.
-- **Still open (not core):** no `packages/demo-app` or `packages/dashboard` on main, so there's no UI, no full demo rehearsal, and no UI backup video.
+- ~~**Still open (not core):** no `packages/demo-app` or `packages/dashboard` on main.~~ Resolved: Lakshay's branch merged (see below).
+
+## Lakshay latest handoff
+
+- **Scope:** `packages/demo-app/`, `packages/dashboard/`, `scratch/fake-events.mjs`; shared lockfile updated for frontend dependencies (upstream already approves esbuild). No proxy source, shared types, Garv implementation, or root scripts changed.
+- **Hackathon Hub:** teams/create, team detail, projects/create, upvotes, server-ranked leaderboard, actual response-mode badge, loading/empty/error/retry states, and a friendly 429 slow-down message. Development mounts avoid StrictMode effect replay so reads do not consume model quota twice. All application data comes from `/api/*`; fixtures are outside the production apps.
+- **Dashboard:** `/phantom` snapshots and SSE, bounded deduplicated request history, expandable JSON, filters, route counters/locks, selection, reset confirmation, real `/phantom/replay {on}` toggle, Materialize job ID/phase/log/test results and retry. Success waits for `done`; reset/replay/materialize are disabled during an observed running job. Model prices are configurable and labelled as estimates over loaded requests.
+- **Checks after rebasing onto 1fde517:** `pnpm -r test` passes all 75 tests (proxy 58, dashboard 11, Hub 6); `pnpm --filter @phantom/dashboard test` 11/11 (including an actual Fastify HTTP test with the frontend fetch clients and an injected model); `pnpm --filter @phantom/demo-app test` 6/6; both package `build` scripts pass strict TypeScript plus Vite. Browser fixture checks: create team, add project, vote, leaderboard, live dashboard, Materialize progress and success, desktop and 390px layouts. Fixture Materialize success is simulated, not evidence of real Codex generation.
+- **Run:** `pnpm dev` launches the existing proxy and both UI packages (5173 Hub, 5174 dashboard). Package READMEs explain isolated fixture testing and production proxy requirements. Root test currently selects only proxy; frontend tests must also be run explicitly.
+- **For Abhik/Garv:** Materialize/retry HTTP wiring has now landed upstream; this branch is rebased on 1fde517. The dashboard uses 202 `{jobId}` and context/codex/tests/activate/done/failed events with that ID. Existing replay/reset/routes/recordings/health contracts were exercised against core. Keep authoritative reset/concurrency guards in the server. No replay API contract change is needed.
+- **Remaining integration limits:** live Cerebras and real Codex Materialize were verified separately by their owners; this frontend run uses an injected model and UI fixtures. The backend now exposes GET /phantom/materialize, but this frontend does not yet use it to recover a job after page reload or a missed terminal SSE event. Team app expects raw list responses and the field names documented in its README.
+- **Dependency note:** the upstream lock contained Rollup 4.67.3, newer than this environment's minimum release-age policy. Resolution was regenerated without relaxing that policy; the frontend and proxy checks passed with the resulting shared lock. No package manifest for the proxy was changed.
+
+### Abhik: Lakshay's frontends merged into main
+
+- Merged `lakshay/frontends` (41f599f) into main. The only conflict was this file; both sides' notes are kept.
+- Root `pnpm test` now runs every package (`pnpm -r test`), and there's a new root `pnpm build`.
+- **Checks on merged main:** proxy 61/61, dashboard 11/11, demo-app 6/6, both production builds, proxy typecheck.
+- **Full live UI rehearsal (before merge, same code):** real Cerebras key and real Codex.
+  - Hub: create team, add project (`votes: 0`), upvote.
+  - Dashboard: shows the stream and routes; **Materialize button** on 5 locked routes; phases context → codex → tests → activate; **15/15** gate tests; routes flipped to REAL in under a minute.
+  - Hub after the flip: upvote (2 votes), new team `team_2` and its page served REAL in about 1 ms. The leaderboard (still PHANTOM) matched the real data.
+- **Fixed during the rehearsal (be419af):** the OpenAI SDK's hidden 429 retries plus its 10-minute default timeout froze the Hub for over 90 s at the rate limit. Now `maxRetries: 0` with a 20 s timeout (`PHANTOM_MODEL_TIMEOUT_MS`), so the Hub's 429 slow-down message appears at once.
+- **Notes for Lakshay (non-blocking):**
+  1. The Materialize job output shows raw ANSI codes (`[1mworkdir:[0m`). Strip them before rendering.
+  2. Upvote then re-fetches the project list, which is 2 model calls at 5/min. The upvote response already contains the updated project, so update the page from it.
+- **Demo tip:** `GET /teams` locks only after it returns at least one team. Revisit the teams list once before Materialize so all 6 routes are selectable.
