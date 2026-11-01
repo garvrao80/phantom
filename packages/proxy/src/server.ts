@@ -1,5 +1,7 @@
 import { createApp } from './app.ts';
 import { cerebrasClient } from './model.ts';
+import { realHandlers, loadGenerated } from './realHandlers.ts';
+import { materialize, retryMaterialize, isMaterializing, getMaterializeJob } from './materialize.ts';
 import { config, DATA_DIR, GENERATED_DIR } from './config.ts';
 
 const { app } = await createApp({
@@ -9,6 +11,9 @@ const { app } = await createApp({
   modelName: config.model,
   replay: config.replay,
   snapshotLimit: config.snapshotLimit,
+  realHandlers,
+  loadGenerated,
+  materializer: { start: materialize, retry: retryMaterialize, isRunning: isMaterializing, getLastJob: getMaterializeJob },
 });
 
 await app.listen({ port: config.port, host: '0.0.0.0' });

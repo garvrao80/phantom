@@ -6,7 +6,7 @@ All humans and coding agents: read this file before starting and pushing. Update
 
 | Owner | Scope | State / evidence | Handoff |
 |---|---|---|---|
-| Abhik | Root/proxy scaffold, shared types, Store, schemas, model loop, routing, events, server | Phases 1.1–1.3, 2, 3, 4, 5 on main; `pnpm test` 53/53 and `tsc` pass; **live Cerebras smoke passed** (create, list, project, upvote, leaderboard, cache) | Materialize wiring in `server.ts`/`app.ts` after garv/materialize merges; see Abhik handoff below |
+| Abhik | Root/proxy scaffold, shared types, Store, schemas, model loop, routing, events, server | Phases 1.1–1.3, 2, 3, 4, 5 on main; `pnpm test` 58/58 and `tsc` pass; live Cerebras smoke passed; **Materialize wired and verified live end to end** | Core done. Next: help with demo hardening and the 5-route timing; see Abhik handoff below |
 | Lakshay | Demo app and dashboard | Awaiting owner update | Use agreed SSE events and POST /phantom/materialize response |
 | Garv | Materialize, replay gate, handler loading, reset/smoke, demo ops | Core-compatible; 47 core + 8 isolated tests pass, strict typecheck passes; live Codex materialization verified | Ready for Abhik to wire HTTP endpoints; see verified run below |
 
@@ -94,3 +94,15 @@ Owner / branch or commit / files changed / checks actually run / remaining block
 - `node scripts/start-local.mjs` reliably resolves the root .env across Windows shells. `scripts/rehearse.mjs` saves timestamped terminal recordings and measurements; `scripts/render-recording.py` makes an MP4 from actual output.
 - Backend-only backup MP4 generated locally; full UI backup still awaits frontend and endpoint wiring. No frontend packages are on main yet.
 - Current checks: core 53/53 + proxy typecheck pass. Final app is NOT signed off while cache collision/endpoint/UI work remains.
+
+### Abhik: Materialize wiring (1 Nov)
+
+- **Wired:**
+  - `POST /phantom/materialize` returns `202 {jobId}`, or `400` (unlocked or unrecorded route), `409` (a job is running) or `501`.
+  - `POST /phantom/materialize/retry` (`202`/`409`) and `GET /phantom/materialize` (`{running, job}`).
+  - `POST /phantom/reset` returns `409` while a job runs.
+  - `server.ts` passes Garv's `realHandlers` map, `loadGenerated` and the controller. Activation runs through the core write queue.
+- **Tests:** `test/materialize-wiring.test.ts` has 5 tests: the endpoints, error mapping, and a full pass through Garv's real `createMaterializer` with stubbed codex/vitest, which flips a route to REAL. Core 58/58; Garv's `scripts/materialize.test.ts` is 8/8 after the change below.
+- **Live result:** real Cerebras recorded `POST /teams` and `GET /teams`; real Codex then generated `handlers.ts` and `tests/teams.test.ts`. The gate passed 7/7, both routes went REAL in **51 s**, and new requests were served by the generated code with the data carried over (`team_2`).
+- **Codex model gotcha:** this laptop's global `~/.codex/config.toml` has `model = "gpt-6.1-sol"`, which the ChatGPT plan rejects (`model_not_found`), so the first live run failed cleanly (routes stayed PHANTOM). From the cached model list, `gpt-6-sol` works.
+- **Change in Garv's `materialize.ts` (one line, please review):** codex args now include optional `-m $CODEX_MODEL` and `-c model_reasoning_effort=$CODEX_REASONING_EFFORT` from `.env`, via `config.codexModel`/`config.codexReasoningEffort` and a new `codexArgs` option. Empty means each person's own Codex config. **Check your model with:** `codex exec --skip-git-repo-check -s read-only -m <model> "Reply OK"`.

@@ -15,7 +15,7 @@ export type MaterializeDeps = {
 };
 type Command = { command: string; args: string[]; cwd: string; timeoutMs: number; onLine: (line: string) => void; input?: string };
 export type Job = { jobId: string; routes: string[]; phase: string; error?: string; tests?: { passed: number; failed: number; total: number } };
-type Options = { proxyDir: string; generatedDir: string; timeoutMs: number; run: (c: Command) => Promise<void>; emit: (name: 'materialize', data: any) => void };
+type Options = { proxyDir: string; generatedDir: string; timeoutMs: number; codexArgs?: string[]; run: (c: Command) => Promise<void>; emit: (name: 'materialize', data: any) => void };
 
 export function createMaterializer(options: Options) {
   let active: Job | undefined;
@@ -54,7 +54,7 @@ export function createMaterializer(options: Options) {
       const fingerprints = protectedFiles.map(file => digest(file));
       const assertEvidence = () => protectedFiles.forEach((file, i) => { if (digest(file) !== fingerprints[i]) throw new Error(`Verification input changed: ${file}`); });
       phase('codex');
-      await options.run({ command: 'codex', args: ['exec', '--sandbox', 'workspace-write', '-C', options.proxyDir, '-'], input: 'Read generated/.context/task.md and complete the task.\n', cwd: options.proxyDir, timeoutMs: options.timeoutMs, onLine: line => phase('codex', { line }) });
+      await options.run({ command: 'codex', args: ['exec', '--sandbox', 'workspace-write', '-C', options.proxyDir, ...(options.codexArgs ?? []), '-'], input: 'Read generated/.context/task.md and complete the task.\n', cwd: options.proxyDir, timeoutMs: options.timeoutMs, onLine: line => phase('codex', { line }) });
       assertEvidence();
       phase('tests');
       const results = resolve(ctx, 'results.json');
@@ -118,7 +118,11 @@ export function runCommand(c: Command): Promise<void> {
     child.on('close', code => finish(code === 0 ? undefined : new Error(`${c.command} exited ${code}: ${outputTail}`)));
   });
 }
-const controller = createMaterializer({ proxyDir: PROXY_DIR, generatedDir: GENERATED_DIR, timeoutMs: config.codexTimeoutMs, run: runCommand, emit });
+const codexArgs = [
+  ...(config.codexModel ? ['-m', config.codexModel] : []),
+  ...(config.codexReasoningEffort ? ['-c', `model_reasoning_effort=${config.codexReasoningEffort}`] : []),
+];
+const controller = createMaterializer({ proxyDir: PROXY_DIR, generatedDir: GENERATED_DIR, timeoutMs: config.codexTimeoutMs, codexArgs, run: runCommand, emit });
 export const materialize = controller.start;
 export const retryMaterialize = controller.retry;
 export const isMaterializing = controller.isRunning;

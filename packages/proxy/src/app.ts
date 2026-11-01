@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { type FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
 import { mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -12,6 +12,15 @@ import { RouteRegistry } from './routes.ts';
 import { runPhantom } from './phantom.ts';
 import { normalisePath, routeKey, isRead } from './router.ts';
 import type { ModelClient } from './model.ts';
+import type { MaterializeDeps, Job } from './materialize.ts';
+
+/** The Materialize controller (materialize.ts), injectable so tests can use a fake. */
+export type Materializer = {
+  start: (routes: string[], deps: MaterializeDeps, retryNote?: string) => { jobId: string };
+  retry: (deps: MaterializeDeps) => { jobId: string };
+  isRunning: () => boolean;
+  getLastJob: () => Job | undefined;
+};
 
 export type AppOptions = {
   dataDir: string;
@@ -22,6 +31,9 @@ export type AppOptions = {
   snapshotLimit?: number;
   /** Route key → real handler. Filled by Materialize. */
   realHandlers?: Map<string, Handler>;
+  /** Imports generated/handlers.ts and fills `realHandlers` for the given keys. */
+  loadGenerated?: (keys: string[]) => Promise<void>;
+  materializer?: Materializer;
 };
 
 export type PhantomContext = ReturnType<typeof createContext>;
@@ -124,7 +136,19 @@ function createContext(opts: AppOptions) {
     events.emit('reset', {});
   }
 
-  return { store, schemas, routes, recorder, cache, events, realHandlers, state, dispatch, reset, opts };
+  const materializeDeps: MaterializeDeps = {
+    schemas,
+    readRecordings: (o) => recorder.read(o),
+    // Activation goes through the write queue so it never lands in the middle of a mutation.
+    loadGenerated: (keys) =>
+      serialWrite(async () => {
+        if (!opts.loadGenerated) throw new Error('loadGenerated is not configured');
+        await opts.loadGenerated(keys);
+      }),
+    setMode: (key, mode) => routes.setMode(key, mode),
+  };
+
+  return { store, schemas, routes, recorder, cache, events, realHandlers, state, dispatch, reset, materializeDeps, opts };
 }
 
 export async function createApp(opts: AppOptions) {
@@ -193,10 +217,35 @@ export async function createApp(opts: AppOptions) {
     return { replay: ctx.state.replay };
   });
 
-  app.post('/phantom/reset', async () => {
+  app.post('/phantom/reset', async (_request, reply) => {
+    if (opts.materializer?.isRunning()) return reply.code(409).send({ error: 'materialize_running' });
     ctx.reset();
     return { ok: true };
   });
+
+  // Materialize (AGENTS.md section 12). The job runs in the background; progress arrives as `materialize` SSE events.
+  const startJob = async (reply: FastifyReply, start: (m: Materializer) => { jobId: string }) => {
+    const m = opts.materializer;
+    if (!m) return reply.code(501).send({ error: 'materialize_unavailable' });
+    if (m.isRunning()) return reply.code(409).send({ error: 'materialize_running' });
+    try {
+      return reply.code(202).send(start(m));
+    } catch (e) {
+      const message = (e as Error).message;
+      return reply.code(/already running/i.test(message) ? 409 : 400).send({ error: 'materialize_rejected', detail: message });
+    }
+  };
+
+  app.post<{ Body: { routes?: unknown } | null }>('/phantom/materialize', (request, reply) =>
+    startJob(reply, (m) => m.start(request.body?.routes as string[], ctx.materializeDeps)),
+  );
+
+  app.post('/phantom/materialize/retry', (_request, reply) => startJob(reply, (m) => m.retry(ctx.materializeDeps)));
+
+  app.get('/phantom/materialize', async () => ({
+    running: opts.materializer?.isRunning() ?? false,
+    job: opts.materializer?.getLastJob() ?? null,
+  }));
 
   app.addHook('onClose', async () => ctx.events.close());
 

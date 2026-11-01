@@ -373,9 +373,12 @@ Real handlers use the **same `Store`** as Phantom, so data carries over.
 | `GET /phantom/routes` | `[{ key, mode, calls, lastLatencyMs, locked, schema }]` |
 | `GET /phantom/recordings?route=` | Recent recordings (default 100) |
 | `GET /phantom/store` | Current store (for the dashboard) |
-| `POST /phantom/materialize` | `{ routes: string[] }` → starts a job, returns `{ jobId }` |
+| `POST /phantom/materialize` | `{ routes: string[] }` → `202 { jobId }`; `400` if a route is unlocked or unrecorded, `409` if a job is running, `501` if not configured |
+| `POST /phantom/materialize/retry` | Re-runs the last failed job with its failure as the retry note → `202 { jobId }` or `409` |
+| `GET /phantom/materialize` | `{ running, job }`: the latest job's `jobId`, `routes`, `phase`, `tests`, `error` |
+| `POST /phantom/replay` | `{ on: boolean }`: toggle replay mode |
 | `POST /phantom/routes/:key/mode` | Manually pin `PHANTOM`/`REAL` (stretch) |
-| `POST /phantom/reset` | Clear the store, schemas, routes, recordings, cache, `generated/` and realHandlers |
+| `POST /phantom/reset` | Clear the store, schemas, routes, recordings, cache, `generated/` and realHandlers. `409` while a Materialize job is running |
 | `GET /phantom/health` | `{ ok, model, replay }` |
 
 Add the response header `x-phantom-mode: PHANTOM | REAL | CACHED | REPLAY` to every `/api/*` response. Enable CORS for both Vite dev ports.
@@ -658,4 +661,4 @@ Fill these in during M0.
 | Exact `codex exec` flags for non-interactive, auto-approved edits in a directory | Garv: `codex exec --sandbox workspace-write --skip-git-repo-check -C <dir>` (no `--full-auto` on his CLI build). See docs/PROGRESS.md |
 | Is `@openai/codex-sdk` simpler than spawning the CLI? | |
 | Measured median phantom latency | Live smoke on 1 Nov (5 calls, reasoning low): median **1.29 s**; reads 0.65–0.72 s, writes 1.29–1.94 s; cached reads ~1 ms. About 600 tokens in and 200 out per call |
-| Materialize wall time for 5 routes | |
+| Materialize wall time for 5 routes | Live on 1 Nov for **2 routes** (`POST /teams`, `GET /teams`): **51 s** from click to REAL, 7/7 gate tests passed, `CODEX_MODEL=gpt-6-sol`, effort medium. 5 routes not timed yet |

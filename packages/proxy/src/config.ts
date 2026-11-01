@@ -16,6 +16,9 @@ export const config = {
   snapshotLimit: Number(process.env.PHANTOM_SNAPSHOT_LIMIT ?? 50),
   maxTokens: Number(process.env.PHANTOM_MAX_TOKENS ?? 800),
   codexTimeoutMs: Number(process.env.CODEX_TIMEOUT_MS ?? 300_000),
+  // Override the user's global Codex model/effort for Materialize only (empty = use ~/.codex/config.toml).
+  codexModel: process.env.CODEX_MODEL || undefined,
+  codexReasoningEffort: process.env.CODEX_REASONING_EFFORT || undefined,
   // Optional request settings; enable once confirmed on the day (AGENTS.md section 22).
   reasoningEffort: process.env.CEREBRAS_REASONING_EFFORT || undefined,
   jsonSchemaOutput: process.env.CEREBRAS_JSON_SCHEMA === 'true',
