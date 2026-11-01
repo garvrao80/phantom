@@ -661,4 +661,4 @@ Fill these in during M0.
 | Exact `codex exec` flags for non-interactive, auto-approved edits in a directory | Garv: `codex exec --sandbox workspace-write --skip-git-repo-check -C <dir>` (no `--full-auto` on his CLI build). See docs/PROGRESS.md |
 | Is `@openai/codex-sdk` simpler than spawning the CLI? | |
 | Measured median phantom latency | Live smoke on 1 Nov (5 calls, reasoning low): median **1.29 s**; reads 0.65–0.72 s, writes 1.29–1.94 s; cached reads ~1 ms. About 600 tokens in and 200 out per call |
-| Materialize wall time for 5 routes | Live on 1 Nov for **2 routes** (`POST /teams`, `GET /teams`): **51 s** from click to REAL, 7/7 gate tests passed, `CODEX_MODEL=gpt-6-sol`, effort medium. 5 routes not timed yet |
+| Materialize wall time for 5 routes | **62 s** live on 1 Nov (`scripts/verify-http-materialize.ts`: POST/GET /teams, GET /teams/:id, POST /projects, POST /projects/:id/upvote), 16/16 gate tests, then all 5 REAL with data kept. Earlier 2-route run: 51 s |
