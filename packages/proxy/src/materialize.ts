@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import { PROXY_DIR, GENERATED_DIR, config } from './config.ts';
@@ -54,7 +54,13 @@ export function createMaterializer(options: Options) {
       const fingerprints = protectedFiles.map(file => digest(file));
       const assertEvidence = () => protectedFiles.forEach((file, i) => { if (digest(file) !== fingerprints[i]) throw new Error(`Verification input changed: ${file}`); });
       phase('codex');
-      await options.run({ command: 'codex', args: ['exec', '--sandbox', 'workspace-write', '-C', options.proxyDir, ...(options.codexArgs ?? []), '-'], input: 'Read generated/.context/task.md and complete the task.\n', cwd: options.proxyDir, timeoutMs: options.timeoutMs, onLine: line => phase('codex', { line }) });
+      const codex = (input: string) => options.run({ command: 'codex', args: ['exec', '--sandbox', 'workspace-write', '-C', options.proxyDir, ...(options.codexArgs ?? []), '-'], input, cwd: options.proxyDir, timeoutMs: options.timeoutMs, onLine: line => phase('codex', { line }) });
+      await codex(CODEX_PROMPT);
+      // Codex occasionally ends its turn after describing a plan. Give it one nudge before failing the job.
+      if (!existsSync(resolve(options.generatedDir, 'handlers.ts'))) {
+        phase('codex', { line: 'Codex stopped before writing generated/handlers.ts. Asking it to finish the job…' });
+        await codex(CODEX_NUDGE);
+      }
       assertEvidence();
       phase('tests');
       const results = resolve(ctx, 'results.json');
@@ -79,6 +85,8 @@ export function createMaterializer(options: Options) {
   return { start, isRunning: () => !!active, getLastJob: () => last ? structuredClone(last) : undefined,
     retry: (deps: MaterializeDeps) => { if (!last || last.phase !== 'failed') throw new Error('No failed job to retry'); return start(last.routes, deps, last.error); } };
 }
+const CODEX_PROMPT = 'Read generated/.context/task.md and complete the task now. Do not stop to describe a plan or ask for confirmation: write generated/handlers.ts and the tests, run them, and finish only when they pass.\n';
+const CODEX_NUDGE = 'You stopped before writing generated/handlers.ts. Do the task in generated/.context/task.md now: write generated/handlers.ts and generated/tests, run the tests, and finish only when they pass. Do not ask for confirmation.\n';
 const digest = (file: string) => createHash('sha256').update(readFileSync(file)).digest('hex');
 const API_MD = `HandlerCtx: { params: Record<string,string>; query: Record<string,string>; body: unknown; store: Store }
 Handler: (ctx: HandlerCtx) => Promise<{status:number;body:unknown}>

@@ -106,6 +106,13 @@ describe('backend status endpoint', () => {
     const { app } = await appWith(m);
     expect((await app.inject({ method: 'GET', url: '/phantom/backend' })).json()).toMatchObject({ state: 'failed', job: { error: 'tests failed' } });
   });
+
+  it('forgets an old failed job after a reset', async () => {
+    const m = fakeMaterializer({ getLastJob: () => ({ jobId: 'job_old', routes: ['POST /teams'], phase: 'failed', error: 'old' }) });
+    const { app } = await appWith(m);
+    await app.inject({ method: 'POST', url: '/phantom/reset' });
+    expect((await app.inject({ method: 'GET', url: '/phantom/backend' })).json()).toMatchObject({ state: 'none', job: null });
+  });
 });
 
 describe('materialize end to end (stubbed codex and vitest)', () => {
@@ -154,3 +161,40 @@ describe('materialize end to end (stubbed codex and vitest)', () => {
     expect(routes.find((x: { key: string }) => x.key === 'POST /teams').mode).toBe('REAL');
   });
 });
+
+describe('codex nudge', () => {
+  async function runJob(writeOnAttempt: number) {
+    const proxyDir = tempDir();
+    for (const f of ['src/testing/replay.ts', 'src/testing/contract.test.ts', 'vitest.generated.config.ts']) {
+      mkdirSync(join(proxyDir, f, '..'), { recursive: true });
+      writeFileSync(join(proxyDir, f), '// gate');
+    }
+    const generatedDir = join(tempDir(), 'generated');
+    let attempts = 0;
+    const run = vi.fn(async (c: { command: string; args: string[]; input?: string }) => {
+      if (c.command === 'codex') {
+        attempts++;
+        if (attempts === writeOnAttempt) writeFileSync(join(generatedDir, 'handlers.ts'), 'export const handlers = {};');
+        return;
+      }
+      throw new Error('stop after codex');
+    });
+    const m = createMaterializer({ proxyDir, generatedDir, timeoutMs: 5_000, run: run as never, emit: () => {} });
+    const deps = { schemas: { all: () => ({ 'POST /teams': {} }) }, readRecordings: () => [{ seq: 1, routeKey: 'POST /teams', ok: true, mode: 'PHANTOM' }],
+                   loadGenerated: async () => {}, setMode: () => {} };
+    m.start(['POST /teams'], deps as never);
+    await vi.waitFor(() => expect(m.isRunning()).toBe(false));
+    return { attempts, inputs: run.mock.calls.filter(([c]) => c.command === 'codex').map(([c]) => c.input) };
+  }
+
+  it('asks Codex once more when it stops without writing handlers.ts', async () => {
+    const { attempts, inputs } = await runJob(2);
+    expect(attempts).toBe(2);
+    expect(inputs[1]).toMatch(/You stopped before writing generated\/handlers\.ts/);
+  });
+
+  it('does not nudge when the first attempt wrote the code', async () => {
+    expect((await runJob(1)).attempts).toBe(1);
+  });
+});
+
