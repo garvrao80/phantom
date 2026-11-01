@@ -184,3 +184,14 @@ Owner / branch or commit / files changed / checks actually run / remaining block
   - Dashboard: Select all → Materialize 6 routes. **Reloaded mid-Codex: the job panel recovered and kept streaming.** The gate passed **20/20** and all 6 routes went REAL.
   - After the flip: new team `team_2`, upvote to 2 and the teams list were all REAL, with the data kept.
 - **Status:** feature-complete. Remaining items are demo prep only (rehearsals, backup video, venue checks).
+
+### Abhik: backup demo video recorded
+
+- `scripts/record-demo.mjs` records a narrated 1920×1080 backup video: Hub and dashboard side by side, a caption bar per step, title and end cards. It uses the real running apps with live Cerebras and Codex, and takes frames from Chrome's screencast, assembled with the system ffmpeg (no extra Playwright downloads).
+  ```bash
+  node scripts/reset.mjs && pnpm dev   # in another terminal
+  PHANTOM_PLAYWRIGHT_MODULE=$(npm root -g)/@playwright/mcp/node_modules/playwright node scripts/record-demo.mjs
+  ```
+  Output goes to `data/demo-recording/phantom-demo.mp4` (git-ignored). Set `PHANTOM_BROWSER_CHANNEL` (default `chrome`; `msedge` on Windows).
+- **Recorded live on 1 Nov:** 8 PHANTOM calls, then Materialize of 6 routes (**17/17** tests), then REAL create team / team page / projects. **1:53**, kept outside the repo as `phantom-demo-backup.mp4` (shared with the team separately).
+- **Honest edit:** the recorder's own 5-req/min pacing stall (about 40 s of a frozen screen while waiting to send the 6th call) is trimmed to 2 s. The proxy itself answered in 0.5–4.8 s. The Materialize section is untrimmed real time.
