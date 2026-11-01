@@ -8,12 +8,13 @@ Phantom sits between your frontend and a backend that hasn't been written yet. U
 
 ## Demo video
 
-[![Phantom demo: Hackathon Hub and the Phantom dashboard during Materialize](docs/assets/phantom-demo-poster.jpg)](docs/assets/phantom-demo.mp4)
+[![Phantom demo: the "Your backend is live" page after Materialize](docs/assets/phantom-demo-poster.jpg)](docs/assets/phantom-demo.mp4)
 
-**[▶ Watch the full live run (1:53)](docs/assets/phantom-demo.mp4).** It's a live run with real Cerebras and real Codex:
+**[▶ Watch the full live run (2:17)](docs/assets/phantom-demo.mp4).** It's a live run with real Cerebras and real Codex:
 1. Create a team and a project and upvote it. There's no backend code; every call is PHANTOM.
-2. Materialize 6 routes. Codex writes the handlers and tests, and **17/17** tests pass.
-3. The routes flip to REAL, and new data is served by the generated code.
+2. **"Your backend"** page: *No backend yet*, with every feature on an AI stand-in.
+3. Materialize 6 routes. The page shows the backend *being built* in plain English, then flips to **"Your backend is live"**: 18 tests passed, plus the real code Codex wrote.
+4. The routes are REAL, and new data is served by the generated code. Response time goes from **800 ms → 1 ms**.
 
 The only edit cuts a ~40 s pause where the recorder waited out the trial key's 5 requests/min limit. Materialize is shown in real time. Re-record it with `scripts/record-demo.mjs`.
 

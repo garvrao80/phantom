@@ -46,11 +46,12 @@ export function BackendPage() {
   const [error, setError] = useState<string | null>(null);
   const realCount = Object.values(events.routes).filter((r) => r.mode === "REAL").length;
   const phase = events.job?.phase;
+  const routeCount = Object.keys(events.routes).length;
 
   useEffect(() => {
     document.title = "Phantom · Your backend";
   }, []);
-  // Refresh whenever the job moves or routes flip, so the reveal happens the moment Materialize finishes.
+  // Refresh whenever a feature appears, the job moves or routes flip, so the reveal happens the moment Materialize finishes.
   useEffect(() => {
     const controller = new AbortController();
     control<BackendStatus>("/backend", undefined, controller.signal)
@@ -63,7 +64,7 @@ export function BackendPage() {
           setError(failure instanceof Error ? failure.message : "Cannot reach Phantom.");
       });
     return () => controller.abort();
-  }, [phase, realCount, events.resetVersion]);
+  }, [phase, realCount, routeCount, events.resetVersion]);
 
   const state = isRunning(events.job) ? "building" : backend?.state ?? "none";
   const currentPhase = (isRunning(events.job) ? events.job?.phase : backend?.job?.phase) ?? "context";
@@ -149,12 +150,19 @@ export function BackendPage() {
             <strong>{backend?.code?.lines ?? "—"}</strong>
             <span>lines of code written by Codex</span>
           </div>
-          <div>
-            <strong>
-              {ms(median(events.requests, "PHANTOM"))} <em>→</em> {ms(median(events.requests, "REAL"))}
-            </strong>
-            <span>response time: AI stand-in → real code</span>
-          </div>
+          {median(events.requests, "REAL") === null ? (
+            <div>
+              <strong>{ms(median(events.requests, "PHANTOM"))}</strong>
+              <span>AI stand-in response time. Real code is measured on its first request.</span>
+            </div>
+          ) : (
+            <div>
+              <strong>
+                {ms(median(events.requests, "PHANTOM"))} <em>→</em> {ms(median(events.requests, "REAL"))}
+              </strong>
+              <span>response time: AI stand-in → real code</span>
+            </div>
+          )}
         </section>
       )}
 
