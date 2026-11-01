@@ -158,7 +158,7 @@ describe("live state", () => {
       FakeEvents.instances[0].onopen?.();
     });
     expect(result.current.connection).toBe("live");
-    expect(fetcher).toHaveBeenCalledTimes(6);
+    expect(fetcher).toHaveBeenCalledTimes(8);
     act(() => {
       FakeEvents.instances[0].emit("request", {});
     });
@@ -249,7 +249,7 @@ describe("materialize controls", () => {
       screen.getByRole("button", { name: /Materialize selected/ }),
     );
     expect(
-      fetcher.mock.calls.find(([url]) => url === "/phantom/materialize")?.[1]
+      fetcher.mock.calls.find(([url, options]) => url === "/phantom/materialize" && options?.method === "POST")?.[1]
         ?.body,
     ).toBe(JSON.stringify({ routes: ["POST /teams"] }));
     await act(async () => {
@@ -388,5 +388,39 @@ describe("bounded state and statistics", () => {
     expect(result.median).toBe(210);
     expect(result.tokens).toBe(300);
     expect(result.cost).toBeCloseTo(0.000145);
+  });
+});
+
+describe("job recovery", () => {
+  it("restores a running job after a reload and keeps following live events", async () => {
+    setup((url) =>
+      url === "/phantom/materialize"
+        ? Promise.resolve(
+            json({ running: true, job: { jobId: "job_9", routes: ["POST /teams"], phase: "codex" } }),
+          )
+        : undefined,
+    );
+    const { result } = renderHook(useEvents);
+    await waitFor(() => expect(result.current.job?.jobId).toBe("job_9"));
+    expect(result.current.job?.phase).toBe("codex");
+    act(() => {
+      FakeEvents.instances[0].emit("materialize", {
+        jobId: "job_9",
+        phase: "done",
+        tests: { passed: 4, failed: 0, total: 4 },
+      });
+    });
+    expect(result.current.job).toMatchObject({ phase: "done", tests: { passed: 4 } });
+  });
+
+  it("does not resurrect a finished job after a reload", async () => {
+    setup((url) =>
+      url === "/phantom/materialize"
+        ? Promise.resolve(json({ running: false, job: { jobId: "job_8", phase: "done" } }))
+        : undefined,
+    );
+    const { result } = renderHook(useEvents);
+    await waitFor(() => expect(result.current.requests).toHaveLength(1));
+    expect(result.current.job).toBeNull();
   });
 });

@@ -9,7 +9,7 @@ All humans and coding agents: read this file before starting and pushing. Update
 - Live five-route HTTP rehearsal: 40.305 seconds; 12/12 generated/replay tests; guards 409; fresh REAL requests preserve data.
 - Live browser flow: create team, project, upvote, Materialize, then fresh project/upvote through REAL. Dashboard showed 13 tests passed; no API failures or page errors. Full UI video and screenshot saved locally; screenshot in docs/assets/live-ui-verification.png.
 - Cache collision and votes/upvotes blockers in the historical notes below are resolved by 38b1175. Broader live paced smoke passed: 14 requests, distinct team cache entries, persisted records, and three upvotes.
-- Known UI limitation: do not reload the dashboard during a job; it does not yet recover job status from the server after reload. Server still blocks reset/concurrent jobs correctly.
+- ~~Known UI limitation: do not reload the dashboard during a job.~~ Fixed: the dashboard now restores a running job from `GET /phantom/materialize` after a reload (see the final rehearsal note).
 
 ## Ownership / current state
 
@@ -173,3 +173,14 @@ Owner / branch or commit / files changed / checks actually run / remaining block
 - Resource updates cancel an older pending read so stale read results cannot overwrite a successful mutation. No proxy/API contracts or dependencies changed.
 - Checks: `pnpm test` passes 84 tests (61 proxy, 15 dashboard, 8 Hub); `pnpm build` passes both strict TypeScript checks and production builds; `git diff --check` passes. Added rendered-output coverage for color/cursor/title/hyperlink escapes and literal text, plus repeated server-authoritative votes, request counts, and failed votes.
 - These checks use scripted responses and do not claim another live model rehearsal. Previously recorded live integration evidence remains above. Job recovery after dashboard reload is still a separate documented limitation.
+
+### Abhik: final check and live rehearsal (1 Nov)
+
+- **Reviewed Lakshay's fixes (7057acd):** ANSI codes are stripped from the Materialize log, and upvote updates the project from the response (one model call, not two), aborting any stale in-flight read. Both look correct.
+- **Fixed the last known gap:** dashboard job recovery after a reload. On load it asks `GET /phantom/materialize` and restores a **running** job ("Reconnected to a running job…"); live SSE events take over from there. A finished job is not resurrected, so there's no stale panel after a reset. Added 2 tests and adjusted one existing test to look up the POST call specifically.
+- **Checks on main:** proxy 61/61, dashboard 17/17, demo-app 8/8 (**86 total**), both builds, both typechecks.
+- **Full live UI rehearsal from a clean reset** (real Cerebras + real Codex, browser):
+  - Hub: create team → add project (`votes: 0`) → upvote (in-place, `votes: 1`) → back to teams list. That's **8 Cerebras calls** for the whole flow, and all 6 routes locked.
+  - Dashboard: Select all → Materialize 6 routes. **Reloaded mid-Codex: the job panel recovered and kept streaming.** The gate passed **20/20** and all 6 routes went REAL.
+  - After the flip: new team `team_2`, upvote to 2 and the teams list were all REAL, with the data kept.
+- **Status:** feature-complete. Remaining items are demo prep only (rehearsals, backup video, venue checks).

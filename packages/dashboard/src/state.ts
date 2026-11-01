@@ -16,6 +16,7 @@ export type Action =
   | { type: "route"; data: Pick<Route, "key" | "mode" | "locked"> }
   | { type: "materialize"; data: MaterializeEvent }
   | { type: "begin"; jobId: string }
+  | { type: "restore"; job: MaterializeEvent }
   | { type: "hydrate"; requests: Recording[]; routes: Route[] }
   | { type: "reset" };
 const emptyRoute = (key: string): Route => ({
@@ -78,6 +79,17 @@ export function reducer(state: State, action: Action): State {
         : {
             ...state,
             job: { jobId: action.jobId, phase: "context", lines: [] },
+          };
+    case "restore":
+      // A job still running on the server after a dashboard reload; live events take over from here.
+      return state.job
+        ? state
+        : {
+            ...state,
+            job: {
+              ...action.job,
+              lines: ["Reconnected to a running job. Live output continues below."],
+            },
           };
     case "materialize": {
       if (
