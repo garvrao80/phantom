@@ -2,13 +2,22 @@
 
 All humans and coding agents: read this file before starting and pushing. Update your own section with the commit/branch, actual checks, and precise dependencies. Fetch before pushing; preserve other owners' entries. Do not treat another owner's pending work as complete.
 
+## Current integration status (read before historical notes)
+
+- Core fixes from 38b1175 and Lakshay frontends from 41f599f are combined on garv/final-integration.
+- Tests: 61 proxy + 11 dashboard + 6 Hub = 78 passing; proxy typecheck and both frontend production builds pass.
+- Live five-route HTTP rehearsal: 40.305 seconds; 12/12 generated/replay tests; guards 409; fresh REAL requests preserve data.
+- Live browser flow: create team, project, upvote, Materialize, then fresh project/upvote through REAL. Dashboard showed 13 tests passed; no API failures or page errors. Full UI video and screenshot saved locally; screenshot in docs/assets/live-ui-verification.png.
+- Cache collision and votes/upvotes blockers in the historical notes below are resolved by 38b1175. Broader paced smoke is being rechecked.
+- Known UI limitation: do not reload the dashboard during a job; it does not yet recover job status from the server after reload. Server still blocks reset/concurrent jobs correctly.
+
 ## Ownership / current state
 
 | Owner | Scope | State / evidence | Handoff |
 |---|---|---|---|
 | Abhik | Root/proxy scaffold, shared types, Store, schemas, model loop, routing, events, server | Phases 1.1–1.3, 2, 3, 4, 5 on main; `pnpm test` 58/58 and `tsc` pass; live Cerebras smoke passed; **Materialize wired and verified live end to end** | Core done. Next: help with demo hardening and the 5-route timing; see Abhik handoff below |
 | Lakshay | Demo app and dashboard | Implemented on lakshay/frontends; frontend tests and builds pass; see checks below | Rebased onto Materialize HTTP wiring; full live UI rehearsal pending; see Lakshay handoff below |
-| Garv | Materialize, replay gate, handler loading, reset/smoke, demo ops | Endpoint changes reviewed; 58 core + 8 isolated tests pass; strict typecheck passes; five-route live rehearsal blocked on votes/upvotes mismatch | HTTP wiring landed; two core blockers below; UI still pending |
+| Garv | Materialize, replay gate, handler loading, reset/smoke, demo ops | Final integration: 78 combined tests, both frontend builds, five-route live HTTP test and real browser flow pass | Cache/contract blockers fixed; integration branch garv/final-integration ready, final smoke running |
 
 ## Garv: integration contract
 

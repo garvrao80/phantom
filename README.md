@@ -53,7 +53,7 @@ PowerShell: use `Copy-Item .env.example .env`; macOS/Linux: `cp .env.example .en
 ## Verification
 
 ```bash
-pnpm test
+pnpm -r test
 pnpm --filter @phantom/proxy typecheck
 node scripts/preflight.mjs
 ```
@@ -86,11 +86,14 @@ Do not publish the scripted-input request latency as Cerebras latency. Generatio
 
 ## Current evidence and remaining integration
 
-- Core suite: 58 tests passing; strict proxy TypeScript check passing.
+- Combined suite: 78 tests passing (61 proxy, 11 dashboard, 6 demo app); strict proxy TypeScript and both frontend builds pass.
 - Materialize failure/activation harness: 8 tests passing.
 - Real Codex generated and verified a one-route backend, then the real dispatcher created new data while preserving existing data. One measured run took 38.293 seconds, with 4 replay/generated tests passing.
 - Three one-route rehearsals with live Cerebras and real Codex passed: handoff times 38.159s, 38.185s, 38.249s; initial API requests 717ms, 659ms, 907ms. Each run passed 4 tests and preserved data after switching to REAL. This is a small local sample, not a general benchmark.
-- Multi-route verification currently exposes a per-ID GET cache collision (team_2 can receive team_1) and an application-contract mismatch (live model uses `upvotes` instead of the required `votes`). The fix is handed to the core owner in docs/PROGRESS.md. Materialize HTTP endpoints, retry, job status and reset guard have landed; final UI verification is pending. See [team progress](docs/PROGRESS.md) for current ownership and evidence.
+- Both previously found issues are fixed: cache/replay keys include the actual path, and `phantom.notes.md` supplies the demo field contract.
+- Five-route live HTTP rehearsal passed in 40.305 seconds with 12 generated/replay tests. Reset and duplicate-job requests returned 409 during generation.
+- Full live browser verification passed: create team/project, vote, press Materialize, then create/vote on fresh data through REAL handlers. The dashboard showed 13 passing tests, with no API failures or browser page errors.
+- See [team progress](docs/PROGRESS.md) for measured evidence and remaining limitations.
 
 ## Team coordination
 
@@ -101,3 +104,13 @@ Built at the DevDay Exchange Community Hackathon, New Delhi, 2026.
 ### Five-route HTTP rehearsal
 
 With the proxy stopped, run `node --env-file=.env packages/proxy/node_modules/tsx/dist/cli.mjs scripts/verify-http-materialize.ts`. This uses real Cerebras, the actual Fastify HTTP handlers, and real Codex. It exercises five routes, checks reset/concurrent-job guards, and verifies new data after handoff. It is paced for the trial API limit. Failures save request/response/store evidence to ignored `data/http-rehearsal-failure.json`; success saves `data/http-rehearsal.json`. Frontend behavior is not covered.
+
+## Live UI verification
+
+![Live Cerebras and Codex browser verification](docs/assets/live-ui-verification.png)
+
+This screenshot is from the real demo app and dashboard after live Cerebras responses, real Codex generation, and the independent test gate. API requests were paced to respect the trial limit; this is not evidence of unrestricted throughput. Five routes are materialized; the initial empty teams-list route remains PHANTOM until it has a non-empty schema sample.
+
+Browser verification script: `scripts/verify-ui.mjs` (Playwright installed separately; optional `PHANTOM_PLAYWRIGHT_MODULE` points to its entry file). It uses real responses, captures a video and screenshots in `data/ui-recording/`, and asserts new requests are REAL after completion. Start all three apps on their usual ports first. Run on clean development data.
+
+Known limitation: the dashboard does not yet recover an in-progress job after page reload; leave it open during Materialize. The server's concurrency/reset guards remain authoritative.
