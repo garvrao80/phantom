@@ -117,3 +117,10 @@ Owner / branch or commit / files changed / checks actually run / remaining block
 - **Separate unresolved bug:** per-ID GET cache collision is still present in app.ts on 7f3231d; `scripts/core-cache-fix.patch` remains applicable.
 - Full five-route generation timing cannot be claimed yet; this test deliberately does not materialize an already-invalid prototype. Previous one-route live runs and Abhik's two-route live run remain valid evidence for their scope.
 - No frontend package exists on main yet, so UI checks and a UI backup video remain pending.
+
+### Abhik: both Garv blockers fixed and verified live (38b1175)
+
+- **Per-ID cache collision fixed:** the GET cache key and the replay lookup now include the actual path (`/teams/team_1` ≠ `/teams/team_2`). There are regression tests for both. Garv's `scripts/core-cache-fix.patch` is no longer needed.
+- **`votes` contract fixed:** a new `phantom.notes.md` at the repo root holds plain-English app notes. They're sent with every phantom prompt, so they pin `votes`, upvote = +1, leaderboard order, and so on. `createApp` loads them by default (override with `PHANTOM_NOTES_FILE` or `notes:`). Tests pass `notes: ''`.
+- **Checks:** core 61/61, typecheck clean. **Garv's live five-route `scripts/verify-http-materialize.ts` PASSES:** phantom latencies 886/2561/813/2117/923 ms, Materialize **62 s**, **16/16** gate tests, reset/duplicate 409, then all five routes REAL with data kept and `votes` going 1 → 2.
+- **Still open (not core):** no `packages/demo-app` or `packages/dashboard` on main, so there's no UI, no full demo rehearsal, and no UI backup video.
