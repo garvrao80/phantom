@@ -6,6 +6,17 @@ Phantom sits between your frontend and a backend that hasn't been written yet. U
 
 > The frontend is the spec. Every click is a test.
 
+## Demo video
+
+[![Phantom demo: Hackathon Hub and the Phantom dashboard during Materialize](docs/assets/phantom-demo-poster.jpg)](docs/assets/phantom-demo.mp4)
+
+**[▶ Watch the full live run (1:53)](docs/assets/phantom-demo.mp4).** It's a live run with real Cerebras and real Codex:
+1. Create a team and a project and upvote it. There's no backend code; every call is PHANTOM.
+2. Materialize 6 routes. Codex writes the handlers and tests, and **17/17** tests pass.
+3. The routes flip to REAL, and new data is served by the generated code.
+
+The only edit cuts a ~40 s pause where the recorder waited out the trial key's 5 requests/min limit. Materialize is shown in real time. Re-record it with `scripts/record-demo.mjs`.
+
 ## How it works
 
 1. The frontend calls `/api/*` on the Phantom proxy.
