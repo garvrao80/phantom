@@ -57,6 +57,7 @@ export function useEvents() {
         });
         buffer = null;
         setError(null);
+        void restoreJob(current);
       } catch (failure) {
         if (closed || current !== generation) return;
         buffer?.forEach(dispatch);
@@ -66,6 +67,24 @@ export function useEvents() {
             ? failure.message
             : "Cannot load proxy state.",
         );
+      }
+    }
+    // Recover a Materialize job that is still running after a reload. Best effort: older proxies lack the endpoint.
+    async function restoreJob(current: number) {
+      try {
+        const status = await control<{
+          running?: boolean;
+          job?: { jobId?: string; phase?: string; tests?: MaterializeEvent["tests"] } | null;
+        }>("/materialize", undefined, controller?.signal);
+        const job = status?.job;
+        if (closed || current !== generation || !status?.running || !job?.jobId) return;
+        if (!["context", "codex", "tests", "activate"].includes(job.phase ?? "")) return;
+        dispatch({
+          type: "restore",
+          job: { jobId: job.jobId, phase: job.phase as MaterializeEvent["phase"], tests: job.tests },
+        });
+      } catch {
+        // Ignore: the panel still fills from live events.
       }
     }
     const listen = (name: string, handler: (value: any) => void) =>
