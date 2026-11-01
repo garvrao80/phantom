@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.local
+data/*
+!data/.gitkeep
+packages/proxy/generated/*
+!packages/proxy/generated/.gitkeep
+*.log
+.DS_Store
