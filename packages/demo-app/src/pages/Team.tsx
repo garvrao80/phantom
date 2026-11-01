@@ -36,8 +36,12 @@ export function Team({
   }
   function upvote(projectId: string) {
     void run(async () => {
-      await api("POST", `/projects/${encodeURIComponent(projectId)}/upvote`);
-      await projects.refresh();
+      const updated = await api<Project>(
+        "POST", `/projects/${encodeURIComponent(projectId)}/upvote`,
+      );
+      projects.update((current) => current?.map((project) =>
+        project.id === updated.id ? updated : project,
+      ) ?? current);
     });
   }
   return (

@@ -30,7 +30,14 @@ export function useResource<T>(path: string, report: ReportError) {
     void refresh();
     return () => active.current?.abort();
   }, [refresh]);
-  return { data, loading, failed, refresh };
+  const update = useCallback((change: (current: T | null) => T | null) => {
+    // A read started before a successful mutation must not overwrite its result.
+    active.current?.abort();
+    setData(change);
+    setLoading(false);
+    setFailed(false);
+  }, []);
+  return { data, loading, failed, refresh, update };
 }
 
 export function useAction(report: ReportError) {

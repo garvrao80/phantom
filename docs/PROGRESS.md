@@ -16,7 +16,7 @@ All humans and coding agents: read this file before starting and pushing. Update
 | Owner | Scope | State / evidence | Handoff |
 |---|---|---|---|
 | Abhik | Root/proxy scaffold, shared types, Store, schemas, model loop, routing, events, server | Phases 1.1–1.3, 2, 3, 4, 5 on main; `pnpm test` 58/58 and `tsc` pass; live Cerebras smoke passed; **Materialize wired and verified live end to end** | Core done. Next: help with demo hardening and the 5-route timing; see Abhik handoff below |
-| Lakshay | Demo app and dashboard | Implemented on lakshay/frontends; frontend tests and builds pass; see checks below | Rebased onto Materialize HTTP wiring; full live UI rehearsal pending; see Lakshay handoff below |
+| Lakshay | Demo app and dashboard | Merged; ANSI log cleanup and single-request upvotes fixed on main; 84 workspace tests and both builds pass | Explicit rehearsal fixes complete; job recovery after reload remains a limitation |
 | Garv | Materialize, replay gate, handler loading, reset/smoke, demo ops | Final integration: 78 combined tests, both frontend builds, five-route live HTTP test and real browser flow pass | Complete: cache/contract fixes, 14-request live smoke, full UI rehearsal and backup video verified; verification artifacts and final handoff in PR #2 |
 
 ## Garv: integration contract
@@ -166,3 +166,10 @@ Owner / branch or commit / files changed / checks actually run / remaining block
   1. The Materialize job output shows raw ANSI codes (`[1mworkdir:[0m`). Strip them before rendering.
   2. Upvote then re-fetches the project list, which is 2 model calls at 5/min. The upvote response already contains the updated project, so update the page from it.
 - **Demo tip:** `GET /teams` locks only after it returns at least one team. Revisit the teams list once before Materialize so all 6 routes are selectable.
+
+## Lakshay: rehearsal follow-up fixes — 2026-11-01
+
+- Fixed both items in Abhik's Notes for Lakshay on main: terminal formatting/control sequences are removed when rendering Materialize output, and upvotes update the matching project from the full server response without an extra GET. Other projects remain intact; failed votes preserve the displayed count.
+- Resource updates cancel an older pending read so stale read results cannot overwrite a successful mutation. No proxy/API contracts or dependencies changed.
+- Checks: `pnpm test` passes 84 tests (61 proxy, 15 dashboard, 8 Hub); `pnpm build` passes both strict TypeScript checks and production builds; `git diff --check` passes. Added rendered-output coverage for color/cursor/title/hyperlink escapes and literal text, plus repeated server-authoritative votes, request counts, and failed votes.
+- These checks use scripted responses and do not claim another live model rehearsal. Previously recorded live integration evidence remains above. Job recovery after dashboard reload is still a separate documented limitation.
