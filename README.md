@@ -20,6 +20,10 @@ Phantom sits between your frontend and a backend that hasn't been written yet. U
 - Response shapes are locked per route after the first success.
 - Reads can't write, and new ids are reserved by Phantom.
 
+## Team
+
+Garv · Abhik · Lakshay
+
 ## Stack
 
 Node + TypeScript, Fastify, Cerebras (`gpt-oss-120b`, OpenAI-compatible API), ajv, Server-Sent Events, Codex (`codex exec`), Vitest, React + Vite.
@@ -29,6 +33,7 @@ Node + TypeScript, Fastify, Cerebras (`gpt-oss-120b`, OpenAI-compatible API), aj
 | Path | What |
 |---|---|
 | `AGENTS.md` | Full build spec: contracts, modules, milestones, prompts |
+| `docs/IMPLEMENTATION_PLAN.md` | Step-by-step build plan with reference code and who does what |
 | `docs/DEMO_AND_QA.md` | Walkthrough example, demo script, judge Q&A |
 | `packages/proxy` | The Phantom proxy |
 | `packages/dashboard` | Live request log and Materialize UI |

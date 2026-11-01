@@ -1,6 +1,8 @@
 # Phantom — Build Spec
 
-> This is the single source of truth for building Phantom. Coding agents (Codex) and humans should read it before writing code. When the spec and the code disagree, fix one of them in the same commit.
+> This is the single source of truth for **what** Phantom is. The step-by-step **how** (order, reference code, verify steps, owners) is in [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
+>
+> This file is the single source of truth for building Phantom. Coding agents (Codex) and humans should read it before writing code. When the spec and the code disagree, fix one of them in the same commit.
 
 **One-liner:** Phantom lets a frontend use a backend before it exists. Unbuilt API calls are answered live by a fast model on Cerebras, backed by a real data store so data stays consistent. Every request is recorded. Press **Materialize** and Codex turns the recorded traffic into a real backend plus tests, then the app switches over with no visible change.
 
@@ -237,8 +239,8 @@ On failure: retry **once**, with the validation error appended to the prompt ("Y
 - A segment becomes `:id` if it matches any of:
   - a number: `^\d+$`
   - a UUID: `^[0-9a-f]{8}-[0-9a-f]{4}-…$` (case-insensitive)
-  - a prefixed id: `^[a-z]+_[A-Za-z0-9]+$`
-  - a long opaque string: `^[A-Za-z0-9_-]{16,}$`
+  - a prefixed id containing a digit: `^[a-z]+_[A-Za-z0-9]*\d[A-Za-z0-9]*$` (so `team_members` is **not** an id)
+  - a long opaque string containing a digit: `^(?=.*\d)[A-Za-z0-9_-]{16,}$`
 - Multiple id segments get numbered: `/teams/:id/members/:id2`.
 - Path params are extracted and passed to the prompt and to real handlers as `params`.
 
@@ -254,11 +256,12 @@ On failure: retry **once**, with the validation error appended to the prompt ("Y
 }
 ```
 - `version` increments on every successful `applyOps` that has at least one op.
+- `nextId[col]` is the **next number to hand out** (default 1). Inserting `team_n` sets it to at least `n + 1`.
 - **Id format:** `<singular>_<n>`, for example `teams` → `team_1`. Singularise naively: drop a trailing `s`, or turn `ies` into `y`.
 - Writes are atomic: write to `store.json.tmp`, then `rename`.
 
 ### 7.5 Reserved ids
-Before each non-read call, `runPhantom` asks the store for **candidate collections** (section 8.4) and reserves the next id for each, for example `{ "teams": "team_3" }`. The model may use any of them for inserts; unused reservations are released (`nextId` doesn't advance). Reads reserve nothing.
+Before each non-read call, `runPhantom` asks the store for **candidate collections** (section 8.4) and peeks the next id for each, for example `{ "teams": "team_3" }`. The model may use any of them for inserts. Peeking doesn't advance `nextId`; only an actual insert does. Non-read calls are serialised, so two requests never get the same id. Reads reserve nothing.
 
 ### 7.6 Schema registry (`data/schemas.json`)
 ```json
@@ -273,10 +276,10 @@ Before each non-read call, `runPhantom` asks the store for **candidate collectio
 }
 ```
 **Inference rules (`inferSchema`):**
-- Primitives map to `string | number | integer | boolean`. Use `number` for any non-integer; `integer` widens to `number` if a later sample is a float.
-- `null` becomes `{}` (unknown), and is refined **once** when a non-null value appears. That one refinement is the only change allowed after the lock.
+- Primitives map to `string | number | boolean`. All numbers are `number`; there's no integer/number split, which avoids false failures.
+- `null` becomes an unknown node (`{ "x-unknown": true }`, accepts anything), and is refined **once** when a non-null value appears. That one refinement is the only change allowed after the lock.
 - Objects: `properties` from the keys, `required` = all keys seen, `additionalProperties: false`.
-- Arrays: `items` inferred from the first element. An **empty array** gives `items: {}` (unknown, refinable once).
+- Arrays: `items` inferred from the first element. An **empty array** gives unknown `items`, refinable once.
 - **Don't lock on an empty top-level array** (`[]`). Wait for a response with at least one item.
 - The locked `status` is the first 2xx status. Later 2xx responses must use the same one.
 
@@ -355,7 +358,7 @@ Appends a line, increments `seq`, updates `routes.json` counters, and broadcasts
 type HandlerCtx = { params: Record<string,string>; query: Record<string,string>; body: unknown; store: Store };
 type Handler = (ctx: HandlerCtx) => Promise<{ status: number; body: unknown }>;
 export const realHandlers: Map<string, Handler>;
-export async function loadGenerated(keys: string[]): Promise<void>; // import(`../generated/handlers.ts?v=${Date.now()}`)
+export async function loadGenerated(keys: string[]): Promise<void>; // copies handlers.ts to handlers.<ts>.ts, then import()s it to bypass the ESM cache
 ```
 Real handlers use the **same `Store`** as Phantom, so data carries over.
 
@@ -572,12 +575,12 @@ The model client is injected (`createPhantom({ model })`), so tests never hit th
 | 5:30–6:15 | M9 |
 | 6:15–8:00 | Rehearse and present |
 
-**Team split (3 people):**
-- **A (core):** store, router, phantom, guards, schemas
-- **B (UI):** dashboard + demo-app, against a fake SSE feed until M5 lands
-- **C (Materialize + ops):** codex spawn, `replay.ts`, test runner, reset, smoke script, backup video
+**Team split:**
+- **Abhik (core proxy):** store, router, schemas, phantom loop, guards, recorder, events, control API
+- **Lakshay (frontends):** Hackathon Hub + dashboard, against fakes until the core lands
+- **Garv (Materialize + ops):** Codex spawn, `replay.ts`, test gate, activation, reset, smoke script, backup video, README
 
-With two people, merge B and C. Solo: skip the stretch items and keep the dashboard minimal.
+Full hour-by-hour split, file ownership and merge points: [docs/IMPLEMENTATION_PLAN.md → Parallel work map](docs/IMPLEMENTATION_PLAN.md#parallel-work-map).
 
 **Cut lines:**
 - At 2:30 with an unstable loop: keep a terminal log only, no dashboard polish.
