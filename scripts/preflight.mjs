@@ -1,0 +1,11 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const envFile = resolve(root, '.env');
+const text = existsSync(envFile) ? readFileSync(envFile, 'utf8') : '';
+const hasKey = !!process.env.CEREBRAS_API_KEY || /^CEREBRAS_API_KEY\s*=\s*["']?[^\s"']+/m.test(text);
+const checks = { node20Plus: Number(process.versions.node.split('.')[0]) >= 20, cerebrasKeyPresent: hasKey, demoAppPresent: existsSync(resolve(root, 'packages/demo-app/package.json')), dashboardPresent: existsSync(resolve(root, 'packages/dashboard/package.json')) };
+console.log(JSON.stringify(checks, null, 2));
+console.log('No credential values were printed. This checks presence only, not validity or live API access.');
+if (Object.values(checks).some(v => !v)) process.exitCode = 1;

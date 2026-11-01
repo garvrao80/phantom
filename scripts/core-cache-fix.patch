@@ -1,0 +1,11 @@
+--- a/packages/proxy/src/app.ts
++++ b/packages/proxy/src/app.ts
+@@ -93,7 +93,7 @@
+     }
+ 
+     if (isRead(req.method)) {
+-      const key = cache.key(req.routeKey, req.query, store.version);
++      const key = cache.key(`${req.routeKey} ${req.path}`, req.query, store.version);
+       const hit = cache.get(key);
+       if (hit) {
+         record({ mode: 'CACHED', ok: true, routeKey: req.routeKey, req: reqSummary(req), res: hit, storeOps: [],

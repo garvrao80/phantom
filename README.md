@@ -39,13 +39,61 @@ Node + TypeScript, Fastify, Cerebras (`gpt-oss-120b`, OpenAI-compatible API), aj
 | `packages/dashboard` | Live request log and Materialize UI |
 | `packages/demo-app` | Hackathon Hub, the demo frontend with no backend |
 
-## Getting started (once scaffolded)
+## Run locally
+
+Requires Node 20+, pnpm, and a signed-in Codex CLI. Hosting and storage run locally; AI calls use your own hackathon access/credits.
+
+1. Copy `.env.example` to `.env` and set `CEREBRAS_API_KEY` on the machine running Phantom. Never commit the key. A teammate's ignored `.env` is not transferred by GitHub.
+2. Run `pnpm install`.
+3. Run `node scripts/start-local.mjs` for the backend on port 4000.
+4. When the frontend packages have landed, use `pnpm dev` to start all packages (demo app 5173, dashboard 5174).
+
+PowerShell: use `Copy-Item .env.example .env`; macOS/Linux: `cp .env.example .env`.
+
+## Verification
 
 ```bash
-cp .env.example .env   # add CEREBRAS_API_KEY
-pnpm install
-pnpm dev               # proxy :4000, dashboard :5174, demo-app :5173
-pnpm reset             # clean state
+pnpm test
+pnpm --filter @phantom/proxy typecheck
+node scripts/preflight.mjs
 ```
+
+The preflight checks key and frontend presence without displaying credential values. It does not prove API access.
+
+With the proxy running and a real Cerebras key loaded:
+
+```bash
+node scripts/smoke.mjs
+```
+
+**Smoke resets development state.** It verifies persisted teams, distinct per-team reads, project creation, and three upvotes. Do not run against anyone else's active demo. API requests are paced 14 seconds apart by default for the trial key's rate limit; `PHANTOM_SMOKE_DELAY_MS` can adjust this after limits are confirmed.
+
+### Backend handoff rehearsal
+
+Stop the development proxy first. This temporarily replaces generated artifacts, restores them afterward, and uses an isolated store. The default uses scripted Cerebras input and **real Codex generation and real replay tests**:
+
+```bash
+node scripts/rehearse.mjs --runs=3
+```
+
+Results and genuine terminal recordings are saved in `data/rehearsals/`. They are backend-only evidence, not a UI demo video. To exercise real Cerebras too, load the local key:
+
+```bash
+node --env-file=.env scripts/rehearse.mjs --runs=3 --live-cerebras
+```
+
+Do not publish the scripted-input request latency as Cerebras latency. Generation timings are measured, not guaranteed.
+
+## Current evidence and remaining integration
+
+- Core suite: 53 tests passing; strict proxy TypeScript check passing.
+- Materialize failure/activation harness: 8 tests passing.
+- Real Codex generated and verified a one-route backend, then the real dispatcher created new data while preserving existing data. One measured run took 38.293 seconds, with 4 replay/generated tests passing.
+- Three one-route rehearsals with live Cerebras and real Codex passed: handoff times 38.159s, 38.185s, 38.249s; initial API requests 717ms, 659ms, 907ms. Each run passed 4 tests and preserved data after switching to REAL. This is a small local sample, not a general benchmark.
+- Multi-route smoke currently exposes a per-ID GET cache collision (team_2 can receive team_1). The fix is handed to the core owner in docs/PROGRESS.md. Materialize HTTP endpoint/UI integration is also pending. See [team progress](docs/PROGRESS.md) for current ownership and evidence.
+
+## Team coordination
+
+Every contributor and coding agent must read and update [docs/PROGRESS.md](docs/PROGRESS.md). Ownership and interface rules are in [the implementation plan](docs/IMPLEMENTATION_PLAN.md). Update measured results only after executing the check; label scripted inputs and offline fallback recordings clearly.
 
 Built at the DevDay Exchange Community Hackathon, New Delhi, 2026.

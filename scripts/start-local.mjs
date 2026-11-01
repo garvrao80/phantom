@@ -1,0 +1,13 @@
+import { existsSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+import { spawn } from 'node:child_process';
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const proxy = resolve(root, 'packages/proxy');
+const require = createRequire(resolve(proxy, 'package.json'));
+const envFile = resolve(root, '.env');
+const child = spawn(process.execPath, [...(existsSync(envFile) ? [`--env-file=${envFile}`] : []), require.resolve('tsx/cli'), resolve(proxy, 'src/server.ts')], { cwd: proxy, env: process.env, stdio: 'inherit', windowsHide: true });
+child.on('error', error => { console.error(error.message); process.exitCode = 1; });
+child.on('exit', code => { process.exitCode = code ?? 1; });
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));

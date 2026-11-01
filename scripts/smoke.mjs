@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 const base = process.env.PHANTOM_BASE_URL ?? `http://localhost:${process.env.PHANTOM_PORT ?? 4000}`;
 let count = 0;
+const delayMs = Number(process.env.PHANTOM_SMOKE_DELAY_MS ?? 14000);
+let lastApiStart = 0;
 async function request(path, body) {
+  if (path.startsWith('/api/')) {
+    const remaining = delayMs - (Date.now() - lastApiStart);
+    if (remaining > 0) await new Promise(r => setTimeout(r, remaining));
+    lastApiStart = Date.now();
+  }
   const response = await fetch(`${base}${path}`, { method: body === undefined ? 'GET' : 'POST', headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(30000) });
   const data = await response.json(); count++;
   assert(response.ok, `${path}: HTTP ${response.status}: ${JSON.stringify(data)}`);

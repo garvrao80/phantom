@@ -77,3 +77,20 @@ Owner / branch or commit / files changed / checks actually run / remaining block
 - Refreshed lockfile under the active 24-hour minimum-release-age policy (old lock included newly released Rollup). No age-policy bypass. Approved only esbuild's required install script. Root manifests/framework choices unchanged.
 - **Abhik next:** wire materialize/retry endpoints and reset guard using exports above. Core `app.ts` cache currently keys by normalized route + query + version, omitting actual path: GET /teams/team_1 can leak into GET /teams/team_2. Please include path/params in the key and add a regression test. REAL/REPLAY recordings are excluded from future materializations because their recorded storeOps do not capture actual mutations.
 - **Remaining:** endpoint/UI integration, live Cerebras smoke, full demo rehearsal. PR #1 may be merged for wiring; do not call the full app complete yet.
+
+## Garv rehearsal / release work — 2026-11-01
+
+- Local Cerebras key supplied and stored only in ignored .env; never shared through GitHub.
+- Three consecutive clean-generated backend rehearsals with scripted Cerebras input and real Codex passed: 32.184s, 48.299s, 41.281s; 4/4 verification tests each.
+- First **live Cerebras + live Codex** backend rehearsal passed: initial request 717ms; generation/verification/handoff 38.159s; 4/4 tests; team_2 created through REAL with team_1 preserved. Single-request latency, not a benchmark median.
+- Added repeatable rehearsal recorder and JSON results, preflight checks, a terminal-recording MP4 renderer, and README operating instructions. UI backup video remains pending Lakshay's UI.
+- Abhik: your latest core changes were pulled. Please wire materialize/retry/reset guard and fix the per-ID GET cache key noted above. Garv has not edited app.ts/server.ts.
+
+## Garv release handoff — live multi-route blocker reproduced
+
+- **Three live backend rehearsals PASS:** 38.159s / 38.185s / 38.249s handoff, 717ms / 659ms / 907ms initial request, 4/4 tests each. Clean generated directory and isolated store each run. Real Cerebras and real Codex used.
+- **Multi-route live smoke FAILS at GET team_2:** cached response returns team_1 (Byte Me) instead of team_2 (Null Pointers). Recording seq 5 reports mode=CACHED, req.path=/teams/team_2, res.body.id=team_1. This is the known normalized-path cache collision, not a model or quota failure.
+- Abhik owns app.ts: prepared `scripts/core-cache-fix.patch` with the one-line request-path cache-key fix; please apply and add your regression test. Garv deliberately did not overwrite your core file. Re-run `node scripts/smoke.mjs` after fix (default 14s API spacing).
+- `node scripts/start-local.mjs` reliably resolves the root .env across Windows shells. `scripts/rehearse.mjs` saves timestamped terminal recordings and measurements; `scripts/render-recording.py` makes an MP4 from actual output.
+- Backend-only backup MP4 generated locally; full UI backup still awaits frontend and endpoint wiring. No frontend packages are on main yet.
+- Current checks: core 53/53 + proxy typecheck pass. Final app is NOT signed off while cache collision/endpoint/UI work remains.
