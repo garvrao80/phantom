@@ -6,7 +6,7 @@ All humans and coding agents: read this file before starting and pushing. Update
 
 | Owner | Scope | State / evidence | Handoff |
 |---|---|---|---|
-| Abhik | Root/proxy scaffold, shared types, Store, schemas, model loop, routing, events, server | Awaiting owner update; main currently contains plans only | Push scaffold + types early; see Garv integration below |
+| Abhik | Root/proxy scaffold, shared types, Store, schemas, model loop, routing, events, server | Phases 1.1–1.3, 2, 3, 4, 5 on main; `pnpm test` 47/47 and `tsc` pass; live Cerebras not yet run (no key on this laptop) | Materialize wiring in `server.ts`/`app.ts` after garv/materialize merges; see Abhik handoff below |
 | Lakshay | Demo app and dashboard | Awaiting owner update | Use agreed SSE events and POST /phantom/materialize response |
 | Garv | Materialize, replay gate, handler loading, reset/smoke, demo ops | In progress on garv/materialize; 8 isolated tests pass; implementation on branch, core integration pending | Waiting on core scaffold; independent harness tests underway |
 
@@ -42,3 +42,25 @@ Owner / branch or commit / files changed / checks actually run / remaining block
 - Real Codex spike succeeded: `codex exec --sandbox workspace-write --skip-git-repo-check -C <isolated-dir>` created hello.ts without an approval prompt using existing ChatGPT sign-in. This proves CLI access, not full Materialize correctness.
 - Materialize module strict TypeScript check passes against isolated config/events stubs. Reset and smoke script syntax checks pass.
 - Implementation branch: [garv/materialize](https://github.com/garvrao80/phantom/tree/garv/materialize). Pull/cherry-pick only after coordinating ownership. No core files were created or replaced.
+
+## Abhik latest handoff
+
+- **On main:** root workspace (`pnpm@9.15.9`), `packages/proxy` with config, types, store, router, schemas, model (Cerebras + `fakeClient`), prompt, snapshot, validate, phantom loop, cache, events, recorder, routes registry, `app.ts` (dispatch + `/phantom/*`), `server.ts`.
+- **Checks run:** `pnpm test` gives 47/47 (unit + Fastify `inject` integration with a fake model, no network). `pnpm exec tsc -p .` is clean. A live boot without a key gives health ok, `/api/*` → 502 `phantom_invalid` recorded and streamed over SSE, CORS preflight 204. **Not run:** any live Cerebras call (no `.env` on this laptop), so the 0.2 spike answers in AGENTS.md section 22 are still open.
+- **Run:** `pnpm install`, then `pnpm --filter @phantom/proxy dev` (port 4000). Data goes to `data/`; override it with `PHANTOM_DATA_DIR`.
+- **For Garv:**
+  - `Store.fromData/dump/reserveId/applyOps` are present.
+  - `config.ts` exports `PROXY_DIR`, `GENERATED_DIR` and `config.codexTimeoutMs`.
+  - `events.ts` exports a module-level `emit(type, data)` that broadcasts on every open hub.
+  - `createApp({ realHandlers })` accepts your `realHandlers` Map; `ctx.dispatch` checks it first (REAL), and real writes go through the same write queue as phantom writes.
+  - `ctx.routes.setMode(key, 'REAL')` emits the `route` event.
+  - `recorder.read({ route, okOnly, limit })` is exposed as `ctx.recorder.read`.
+  - `Handler`/`HandlerCtx` are also in `types.ts`, structurally identical to yours.
+- **For Lakshay:**
+  - Every `/api/*` response has `x-phantom-mode: PHANTOM|REAL|CACHED|REPLAY|ERROR`.
+  - SSE events are `request` (a full recording line), `route` (`{key, mode, locked}`) and `reset`.
+  - `GET /phantom/routes` returns `[{key, mode, calls, lastLatencyMs, locked, schema}]`.
+  - `GET /phantom/recordings?limit=&route=&okOnly=` returns oldest-first.
+  - `POST /phantom/replay {on}` and `POST /phantom/reset` are live.
+- **Deviation from plan:** `/api/*` registers GET/POST/PUT/PATCH/DELETE/HEAD only, not OPTIONS, so CORS preflight keeps working.
+- **Next (Abhik):** after garv/materialize lands, add `POST /phantom/materialize` (202, 400/409), `/retry`, and a reset guard while `isMaterializing()`, then run the live smoke with a real key.
