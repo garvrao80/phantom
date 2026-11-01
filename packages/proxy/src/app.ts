@@ -39,6 +39,8 @@ export type AppOptions = {
   materializer?: Materializer;
 };
 
+const MAX_CODE_PREVIEW = 20_000;
+
 export type PhantomContext = ReturnType<typeof createContext>;
 export type DispatchResult = { mode: Mode; res: ApiResponse };
 
@@ -245,6 +247,32 @@ export async function createApp(opts: AppOptions) {
   );
 
   app.post('/phantom/materialize/retry', (_request, reply) => startJob(reply, (m) => m.retry(ctx.materializeDeps)));
+
+  // The generated backend itself, for the "Your backend" page: its state, routes and the code Codex wrote.
+  app.get('/phantom/backend', async () => {
+    const running = opts.materializer?.isRunning() ?? false;
+    const job = opts.materializer?.getLastJob() ?? null;
+    const real = ctx.realHandlers.size > 0;
+    const state = running ? 'building' : real ? 'live' : job?.phase === 'failed' ? 'failed' : 'none';
+    const routes = ctx.routes.list().map(({ key, mode, calls, locked }) => ({
+      key, calls, locked, mode: ctx.realHandlers.has(key) ? 'REAL' : mode,
+    }));
+    const handlersFile = resolve(opts.generatedDir, 'handlers.ts');
+    const code = real && existsSync(handlersFile) ? readFileSync(handlersFile, 'utf8') : null;
+    const testsDir = resolve(opts.generatedDir, 'tests');
+    const testFiles = real && existsSync(testsDir) ? readdirSync(testsDir).filter((f) => f.endsWith('.test.ts')) : [];
+    return {
+      state,
+      routes,
+      job: state === 'none' ? null : job,
+      code: code === null ? null : {
+        file: 'generated/handlers.ts',
+        lines: code.split('\n').length,
+        source: code.length > MAX_CODE_PREVIEW ? code.slice(0, MAX_CODE_PREVIEW) + '\n// …' : code,
+      },
+      testFiles: testFiles.map((f) => `generated/tests/${f}`),
+    };
+  });
 
   app.get('/phantom/materialize', async () => ({
     running: opts.materializer?.isRunning() ?? false,

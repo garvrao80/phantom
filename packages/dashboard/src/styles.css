@@ -1350,3 +1350,32 @@ pre {
     font-size: 12px;
   }
 }
+
+/* Links to the "Your backend" page, and the control-room disclaimer. */
+.backend-link {
+  text-decoration: none;
+  color: var(--green);
+  border-color: rgba(94, 230, 160, 0.45);
+}
+.open-backend {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  background: var(--green);
+  color: #0e2a1c;
+  font-weight: 700;
+  font-size: 16px;
+  text-decoration: none;
+  box-shadow: 0 0 30px rgba(94, 230, 160, 0.3);
+}
+.open-backend:hover {
+  filter: brightness(1.08);
+}
+.not-backend {
+  margin: 10px 0 0;
+  font: 13px var(--mono);
+  color: var(--muted);
+  border-left: 2px solid var(--purple);
+  padding-left: 10px;
+}

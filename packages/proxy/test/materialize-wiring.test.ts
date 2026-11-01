@@ -77,6 +77,37 @@ describe('materialize endpoints', () => {
   });
 });
 
+describe('backend status endpoint', () => {
+  it('reports no backend, then building, then live with the generated code', async () => {
+    let running = false;
+    const m = fakeMaterializer({ isRunning: () => running, getLastJob: () => ({ jobId: 'job_1', routes: ['POST /teams'], phase: running ? 'codex' : 'done' }) });
+    const { app, realHandlers, dir } = await appWith(m, [insertTeam('team_1', 'A')]);
+    await app.inject({ method: 'POST', url: '/api/teams', payload: { name: 'A' } });
+    const none = (await app.inject({ method: 'GET', url: '/phantom/backend' })).json();
+    expect(none).toMatchObject({ state: 'none', job: null, code: null, testFiles: [] });
+    expect(none.routes).toEqual([{ key: 'POST /teams', calls: 1, locked: true, mode: 'PHANTOM' }]);
+
+    running = true;
+    expect((await app.inject({ method: 'GET', url: '/phantom/backend' })).json()).toMatchObject({ state: 'building', job: { phase: 'codex' } });
+
+    running = false;
+    mkdirSync(join(dir, 'generated', 'tests'), { recursive: true });
+    writeFileSync(join(dir, 'generated', 'handlers.ts'), 'export const handlers = {};\n// real\n');
+    writeFileSync(join(dir, 'generated', 'tests', 'teams.test.ts'), '');
+    realHandlers.set('POST /teams', async () => ({ status: 201, body: {} }));
+    const live = (await app.inject({ method: 'GET', url: '/phantom/backend' })).json();
+    expect(live).toMatchObject({ state: 'live', code: { file: 'generated/handlers.ts', lines: 3 }, testFiles: ['generated/tests/teams.test.ts'] });
+    expect(live.code.source).toContain('// real');
+    expect(live.routes[0].mode).toBe('REAL');
+  });
+
+  it('reports a failed build when nothing went REAL', async () => {
+    const m = fakeMaterializer({ getLastJob: () => ({ jobId: 'job_1', routes: ['POST /teams'], phase: 'failed', error: 'tests failed' }) });
+    const { app } = await appWith(m);
+    expect((await app.inject({ method: 'GET', url: '/phantom/backend' })).json()).toMatchObject({ state: 'failed', job: { error: 'tests failed' } });
+  });
+});
+
 describe('materialize end to end (stubbed codex and vitest)', () => {
   it('flips a recorded route to REAL through the real controller', async () => {
     const proxyDir = tempDir();
