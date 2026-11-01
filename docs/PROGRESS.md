@@ -8,7 +8,7 @@ All humans and coding agents: read this file before starting and pushing. Update
 |---|---|---|---|
 | Abhik | Root/proxy scaffold, shared types, Store, schemas, model loop, routing, events, server | Phases 1.1–1.3, 2, 3, 4, 5 on main; `pnpm test` 58/58 and `tsc` pass; live Cerebras smoke passed; **Materialize wired and verified live end to end** | Core done. Next: help with demo hardening and the 5-route timing; see Abhik handoff below |
 | Lakshay | Demo app and dashboard | Awaiting owner update | Use agreed SSE events and POST /phantom/materialize response |
-| Garv | Materialize, replay gate, handler loading, reset/smoke, demo ops | Core-compatible; 47 core + 8 isolated tests pass, strict typecheck passes; live Codex materialization verified | Ready for Abhik to wire HTTP endpoints; see verified run below |
+| Garv | Materialize, replay gate, handler loading, reset/smoke, demo ops | Endpoint changes reviewed; 58 core + 8 isolated tests pass; strict typecheck passes; five-route live rehearsal blocked on votes/upvotes mismatch | HTTP wiring landed; two core blockers below; UI still pending |
 
 ## Garv: integration contract
 
@@ -106,3 +106,14 @@ Owner / branch or commit / files changed / checks actually run / remaining block
 - **Live result:** real Cerebras recorded `POST /teams` and `GET /teams`; real Codex then generated `handlers.ts` and `tests/teams.test.ts`. The gate passed 7/7, both routes went REAL in **51 s**, and new requests were served by the generated code with the data carried over (`team_2`).
 - **Codex model gotcha:** this laptop's global `~/.codex/config.toml` has `model = "gpt-6.1-sol"`, which the ChatGPT plan rejects (`model_not_found`), so the first live run failed cleanly (routes stayed PHANTOM). From the cached model list, `gpt-6-sol` works.
 - **Change in Garv's `materialize.ts` (one line, please review):** codex args now include optional `-m $CODEX_MODEL` and `-c model_reasoning_effort=$CODEX_REASONING_EFFORT` from `.env`, via `config.codexModel`/`config.codexReasoningEffort` and a new `codexArgs` option. Empty means each person's own Codex config. **Check your model with:** `codex exec --skip-git-repo-check -s read-only -m <model> "Reply OK"`.
+
+## Garv: latest HTTP verification — core 7f3231d
+
+- Reviewed Abhik's optional CODEX_MODEL / CODEX_REASONING_EFFORT support; compatible with Garv's controller. No override needed on Garv's machine.
+- Ran core suite: 58/58; strict proxy typecheck passes; isolated Materialize gate: 8/8.
+- Added `scripts/verify-http-materialize.ts`: five real Cerebras routes, POST materialize, duplicate/reset 409 guards, GET job polling, then all five routes exercised as REAL with new data. It preserves generated artifacts, uses an isolated store, and writes diagnostic evidence on failure.
+- **Two live attempts stop before Materialize:** project upvote data violates the demo's field contract. Exact stored record: `{id: "project_1", teamId: "team_1", title: "Phantom", pitch: "Backend before it exists", upvotes: 1}`. The expected `votes: 1` is missing. HTTP 200 alone is not success for the demo UI.
+- **Abhik action:** establish/enforce the project's `votes` field before the first schema locks (e.g. feed the demo field contract into the model and validate against it). Current prompt only says conventional REST shape, so `upvotes` is a plausible model choice. Do not silently change the UI contract or relax the test to accept either field. Then rerun this five-route test.
+- **Separate unresolved bug:** per-ID GET cache collision is still present in app.ts on 7f3231d; `scripts/core-cache-fix.patch` remains applicable.
+- Full five-route generation timing cannot be claimed yet; this test deliberately does not materialize an already-invalid prototype. Previous one-route live runs and Abhik's two-route live run remain valid evidence for their scope.
+- No frontend package exists on main yet, so UI checks and a UI backup video remain pending.

@@ -86,14 +86,18 @@ Do not publish the scripted-input request latency as Cerebras latency. Generatio
 
 ## Current evidence and remaining integration
 
-- Core suite: 53 tests passing; strict proxy TypeScript check passing.
+- Core suite: 58 tests passing; strict proxy TypeScript check passing.
 - Materialize failure/activation harness: 8 tests passing.
 - Real Codex generated and verified a one-route backend, then the real dispatcher created new data while preserving existing data. One measured run took 38.293 seconds, with 4 replay/generated tests passing.
 - Three one-route rehearsals with live Cerebras and real Codex passed: handoff times 38.159s, 38.185s, 38.249s; initial API requests 717ms, 659ms, 907ms. Each run passed 4 tests and preserved data after switching to REAL. This is a small local sample, not a general benchmark.
-- Multi-route smoke currently exposes a per-ID GET cache collision (team_2 can receive team_1). The fix is handed to the core owner in docs/PROGRESS.md. Materialize HTTP endpoint/UI integration is also pending. See [team progress](docs/PROGRESS.md) for current ownership and evidence.
+- Multi-route verification currently exposes a per-ID GET cache collision (team_2 can receive team_1) and an application-contract mismatch (live model uses `upvotes` instead of the required `votes`). The fix is handed to the core owner in docs/PROGRESS.md. Materialize HTTP endpoints, retry, job status and reset guard have landed; final UI verification is pending. See [team progress](docs/PROGRESS.md) for current ownership and evidence.
 
 ## Team coordination
 
 Every contributor and coding agent must read and update [docs/PROGRESS.md](docs/PROGRESS.md). Ownership and interface rules are in [the implementation plan](docs/IMPLEMENTATION_PLAN.md). Update measured results only after executing the check; label scripted inputs and offline fallback recordings clearly.
 
 Built at the DevDay Exchange Community Hackathon, New Delhi, 2026.
+
+### Five-route HTTP rehearsal
+
+With the proxy stopped, run `node --env-file=.env packages/proxy/node_modules/tsx/dist/cli.mjs scripts/verify-http-materialize.ts`. This uses real Cerebras, the actual Fastify HTTP handlers, and real Codex. It exercises five routes, checks reset/concurrent-job guards, and verifies new data after handoff. It is paced for the trial API limit. Failures save request/response/store evidence to ignored `data/http-rehearsal-failure.json`; success saves `data/http-rehearsal.json`. Frontend behavior is not covered.
