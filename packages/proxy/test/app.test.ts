@@ -72,6 +72,16 @@ describe('/api/* phantom loop', () => {
     expect(model.calls).toHaveLength(3);
   });
 
+  it('caches per actual path, not per route pattern', async () => {
+    const { app, model } = await testApp([ok(200, { id: 'team_1', name: 'A' }), ok(200, { id: 'team_2', name: 'B' })]);
+    await app.inject({ method: 'GET', url: '/api/teams/team_1' });
+    const r = await app.inject({ method: 'GET', url: '/api/teams/team_2' });
+    expect(r.headers['x-phantom-mode']).toBe('PHANTOM');
+    expect(r.json()).toEqual({ id: 'team_2', name: 'B' });
+    expect((await app.inject({ method: 'GET', url: '/api/teams/team_1' })).headers['x-phantom-mode']).toBe('CACHED');
+    expect(model.calls).toHaveLength(2);
+  });
+
   it('serialises writes so ids never collide', async () => {
     const { app, ctx } = await testApp([insertTeam('team_1', 'A'), insertTeam('team_2', 'B')]);
     const [a, b] = await Promise.all([
@@ -122,6 +132,14 @@ describe('/phantom/* control API', () => {
     expect(model.calls).toHaveLength(1);
   });
 
+  it('replays per actual path, not per route pattern', async () => {
+    const { app } = await testApp([ok(200, { id: 'team_1', name: 'A' })]);
+    await app.inject({ method: 'GET', url: '/api/teams/team_1' });
+    await app.inject({ method: 'POST', url: '/phantom/replay', payload: { on: true } });
+    expect((await app.inject({ method: 'GET', url: '/api/teams/team_1' })).json()).toEqual({ id: 'team_1', name: 'A' });
+    expect((await app.inject({ method: 'GET', url: '/api/teams/team_2' })).statusCode).toBe(503);
+  });
+
   it('resets everything, including generated files', async () => {
     const { app, ctx, generatedDir } = await testApp([insertTeam('team_1', 'A')]);
     await app.inject({ method: 'POST', url: '/api/teams', payload: { name: 'A' } });
@@ -140,5 +158,18 @@ describe('/phantom/* control API', () => {
   it('reports health', async () => {
     const { app } = await testApp();
     expect((await app.inject({ method: 'GET', url: '/phantom/health' })).json()).toEqual({ ok: true, model: 'fake', replay: false });
+  });
+});
+
+describe('app notes', () => {
+  it('includes the notes in every phantom prompt', async () => {
+    const dir = (await import('./helpers.ts')).tempDir();
+    const { createApp } = await import('../src/app.ts');
+    const { fakeClient } = await import('../src/model.ts');
+    const model = fakeClient([ok(200, [])]);
+    const { app } = await createApp({ dataDir: join(dir, 'data'), generatedDir: join(dir, 'gen'), model, modelName: 'fake',
+                                      notes: '- A project has `votes`, starting at 0.' });
+    await app.inject({ method: 'GET', url: '/api/projects' });
+    expect(model.calls[0][1].content).toMatch(/^APP NOTES[^\n]*\n- A project has `votes`, starting at 0\./);
   });
 });

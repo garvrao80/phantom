@@ -6,6 +6,8 @@ export const PROXY_DIR = resolve(here, '..');
 export const ROOT_DIR = resolve(PROXY_DIR, '../..');
 export const DATA_DIR = resolve(process.env.PHANTOM_DATA_DIR ?? resolve(ROOT_DIR, 'data'));
 export const GENERATED_DIR = resolve(PROXY_DIR, 'generated');
+/** Optional plain-English domain notes sent with every phantom request. */
+export const NOTES_FILE = resolve(process.env.PHANTOM_NOTES_FILE ?? resolve(ROOT_DIR, 'phantom.notes.md'));
 
 export const config = {
   port: Number(process.env.PHANTOM_PORT ?? 4000),

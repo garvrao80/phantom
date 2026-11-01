@@ -29,6 +29,7 @@ Store op formats:
 
 export type PromptCtx = {
   req: ApiRequest;
+  notes?: string;
   locked?: Locked;
   related: Record<string, Locked>;
   reserved: Record<string, string>;
@@ -42,9 +43,10 @@ const json = (v: unknown) => JSON.stringify(v ?? null);
 const cleanSchema = (s: unknown) => JSON.parse(JSON.stringify(s), (k, v) => (k === 'x-unknown' ? undefined : v));
 
 export function buildUserPrompt(ctx: PromptCtx) {
-  const { req, locked, related, reserved, collections, snapshot } = ctx;
+  const { req, notes, locked, related, reserved, collections, snapshot } = ctx;
   const relatedLines = Object.entries(related).map(([k, l]) => `${k} (status ${l.status}): ${json(cleanSchema(l.response))}`);
   return [
+    ...(notes?.trim() ? ['APP NOTES (from the app developers; follow them exactly):', notes.trim(), ''] : []),
     'REQUEST',
     `${req.method} ${req.path}`,
     `params: ${json(req.params)}`,

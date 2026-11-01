@@ -25,7 +25,7 @@ async function appWith(materializer?: Materializer, answers: object[] = []) {
     for (const k of keys) realHandlers.set(k, async () => ({ status: 201, body: { id: 'team_2', name: 'Real' } }));
   });
   const { app, ctx } = await createApp({
-    dataDir: join(dir, 'data'), generatedDir: join(dir, 'generated'), model: fakeClient(answers), modelName: 'fake',
+    dataDir: join(dir, 'data'), generatedDir: join(dir, 'generated'), model: fakeClient(answers), modelName: 'fake', notes: '',
     realHandlers, loadGenerated, materializer,
   });
   return { app, ctx, realHandlers, loadGenerated, dir };
@@ -104,7 +104,7 @@ describe('materialize end to end (stubbed codex and vitest)', () => {
                                               emit: (_n, data) => events.push(data) });
     const realHandlers = new Map<string, Handler>();
     const { app } = await createApp({
-      dataDir: join(dir, 'data'), generatedDir, model: fakeClient([insertTeam('team_1', 'A')]), modelName: 'fake',
+      dataDir: join(dir, 'data'), generatedDir, model: fakeClient([insertTeam('team_1', 'A')]), modelName: 'fake', notes: '',
       realHandlers,
       loadGenerated: async (keys) => { for (const k of keys) realHandlers.set(k, async () => ({ status: 201, body: { id: 'team_2', name: 'Real' } })); },
       materializer: { start: materializer.start, retry: materializer.retry, isRunning: materializer.isRunning, getLastJob: materializer.getLastJob },

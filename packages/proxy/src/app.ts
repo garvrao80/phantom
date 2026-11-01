@@ -1,6 +1,7 @@
 import Fastify, { type FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
-import { mkdirSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { NOTES_FILE } from './config.ts';
 import { resolve } from 'node:path';
 import type { ApiRequest, ApiResponse, Handler, Mode, Recording } from './types.ts';
 import { Store } from './store.ts';
@@ -29,6 +30,8 @@ export type AppOptions = {
   modelName: string;
   replay?: boolean;
   snapshotLimit?: number;
+  /** Plain-English domain notes included in every phantom prompt. Defaults to the contents of phantom.notes.md. */
+  notes?: string;
   /** Route key → real handler. Filled by Materialize. */
   realHandlers?: Map<string, Handler>;
   /** Imports generated/handlers.ts and fills `realHandlers` for the given keys. */
@@ -41,6 +44,7 @@ export type DispatchResult = { mode: Mode; res: ApiResponse };
 
 function createContext(opts: AppOptions) {
   mkdirSync(opts.dataDir, { recursive: true });
+  const notes = opts.notes ?? (existsSync(NOTES_FILE) ? readFileSync(NOTES_FILE, 'utf8') : undefined);
   const events = new EventHub();
   const store = Store.load(resolve(opts.dataDir, 'store.json'));
   const schemas = new SchemaRegistry(resolve(opts.dataDir, 'schemas.json'));
@@ -97,7 +101,7 @@ function createContext(opts: AppOptions) {
     if (handler) return runReal(req, handler);
 
     if (state.replay) {
-      const hit = recorder.latest(req.routeKey, req.query);
+      const hit = recorder.latest(req.routeKey, req.path, req.query);
       const res = hit ? hit.res : { status: 503, body: { error: 'no_recording', detail: `nothing recorded for ${req.routeKey}` } };
       record({ mode: 'REPLAY', ok: !!hit, routeKey: req.routeKey, req: reqSummary(req), res, storeOps: [],
                storeBefore: { version: store.version, nextId: {}, collections: {} }, latencyMs: 0, retries: 0 });
@@ -105,20 +109,20 @@ function createContext(opts: AppOptions) {
     }
 
     if (isRead(req.method)) {
-      const key = cache.key(req.routeKey, req.query, store.version);
+      const key = cache.key(req.routeKey, req.path, req.query, store.version);
       const hit = cache.get(key);
       if (hit) {
         record({ mode: 'CACHED', ok: true, routeKey: req.routeKey, req: reqSummary(req), res: hit, storeOps: [],
                  storeBefore: store.snapshot(store.collections(), snapshotLimit), latencyMs: 0, retries: 0 });
         return { mode: 'CACHED', res: hit };
       }
-      const out = await runPhantom(req, { store, schemas, model: opts.model, snapshotLimit });
+      const out = await runPhantom(req, { store, schemas, model: opts.model, snapshotLimit, notes });
       record(out.rec);
       if (out.rec.ok) cache.set(key, out.res);
       return { mode: out.rec.mode, res: out.res };
     }
 
-    const out = await serialWrite(() => runPhantom(req, { store, schemas, model: opts.model, snapshotLimit }));
+    const out = await serialWrite(() => runPhantom(req, { store, schemas, model: opts.model, snapshotLimit, notes }));
     record(out.rec);
     return { mode: out.rec.mode, res: out.res };
   }

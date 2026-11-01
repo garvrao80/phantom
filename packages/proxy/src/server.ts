@@ -2,7 +2,8 @@ import { createApp } from './app.ts';
 import { cerebrasClient } from './model.ts';
 import { realHandlers, loadGenerated } from './realHandlers.ts';
 import { materialize, retryMaterialize, isMaterializing, getMaterializeJob } from './materialize.ts';
-import { config, DATA_DIR, GENERATED_DIR } from './config.ts';
+import { existsSync } from 'node:fs';
+import { config, DATA_DIR, GENERATED_DIR, NOTES_FILE } from './config.ts';
 
 const { app } = await createApp({
   dataDir: DATA_DIR,
@@ -18,4 +19,5 @@ const { app } = await createApp({
 
 await app.listen({ port: config.port, host: '0.0.0.0' });
 console.log(`phantom proxy on :${config.port} (model ${config.model}${config.replay ? ', replay mode' : ''})`);
+if (existsSync(NOTES_FILE)) console.log(`app notes: ${NOTES_FILE}`);
 if (!config.apiKey) console.warn('CEREBRAS_API_KEY is not set: phantom calls will fail until it is (replay still works)');

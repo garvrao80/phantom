@@ -27,12 +27,12 @@ export class Recorder {
       .slice(-limit);
   }
 
-  /** Latest successful recording for this route and query (used by replay mode). */
-  latest(routeKey: string, query: object) {
+  /** Latest successful recording for this exact path and query (used by replay mode). */
+  latest(routeKey: string, path: string, query: object) {
     const q = JSON.stringify(query);
     return this.readAll()
       .reverse()
-      .find((r) => r.ok && r.routeKey === routeKey && JSON.stringify(r.req.query) === q && r.mode !== 'REPLAY');
+      .find((r) => r.ok && r.routeKey === routeKey && r.req.path === path && JSON.stringify(r.req.query) === q && r.mode !== 'REPLAY');
   }
 
   reset() {

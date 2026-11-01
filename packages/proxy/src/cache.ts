@@ -1,10 +1,10 @@
 import type { ApiResponse } from './types.ts';
 
-/** GET cache keyed by route + query + store version, so any write invalidates it. */
+/** GET cache keyed by route + actual path + query + store version, so any write invalidates it. */
 export class ResponseCache {
   private map = new Map<string, ApiResponse>();
-  key(routeKey: string, query: object, version: number) {
-    return `${routeKey}|${JSON.stringify(query)}|${version}`;
+  key(routeKey: string, path: string, query: object, version: number) {
+    return `${routeKey}|${path}|${JSON.stringify(query)}|${version}`;
   }
   get(k: string) {
     return this.map.get(k);

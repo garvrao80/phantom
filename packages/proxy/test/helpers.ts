@@ -11,7 +11,7 @@ export async function testApp(answers: (string | object | Error)[] = []) {
   const generatedDir = join(dir, 'generated');
   mkdirSync(generatedDir);
   const model = fakeClient(answers);
-  const { app, ctx } = await createApp({ dataDir: join(dir, 'data'), generatedDir, model, modelName: 'fake' });
+  const { app, ctx } = await createApp({ dataDir: join(dir, 'data'), generatedDir, model, modelName: 'fake', notes: '' });
   return { app, ctx, model, dir, generatedDir };
 }
 

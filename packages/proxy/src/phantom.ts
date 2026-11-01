@@ -7,7 +7,7 @@ import { candidateCollections } from './snapshot.ts';
 import { parseAnswer, checkAnswer, type Answer } from './validate.ts';
 import { isRead } from './router.ts';
 
-export type PhantomDeps = { store: Store; schemas: SchemaRegistry; model: ModelClient; snapshotLimit: number };
+export type PhantomDeps = { store: Store; schemas: SchemaRegistry; model: ModelClient; snapshotLimit: number; notes?: string };
 export type PhantomResult = { res: ApiResponse; rec: Omit<Recording, 'seq' | 'ts'> };
 
 const MAX_ATTEMPTS = 2;
@@ -34,6 +34,7 @@ export async function runPhantom(req: ApiRequest, deps: PhantomDeps): Promise<Ph
   const storeBefore = store.snapshot([...new Set([...send, ...create])], snapshotLimit);
   const ctx = {
     req,
+    notes: deps.notes,
     locked: schemas.get(req.routeKey),
     related: relatedSchemas(schemas, req.routeKey),
     reserved,
