@@ -635,6 +635,8 @@ After each prompt: run the tests, read the diff, and commit.
 ---
 
 ## 21. Working conventions
+- **Coordination:** read `docs/PROGRESS.md` before starting and before pushing. Update your own row and handoff notes when an interface, blocker, or validation result changes. Preserve other owners' notes. Never mark work complete without reporting what was tested.
+- Documentation-only coordination commits may proceed without the application test suite when no package manifest exists; record this limitation. Implementation commits still require the available tests to pass.
 - **Branch:** work on `main` with small commits. Use short-lived branches only when two people touch the same package.
 - **Commits:** imperative, scoped messages, for example `proxy: enforce read-only storeOps`.
 - **Before each commit:** `pnpm test` passes.
