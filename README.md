@@ -45,6 +45,7 @@ Node + TypeScript, Fastify, Cerebras (`gpt-oss-120b`, OpenAI-compatible API), aj
 |---|---|
 | `AGENTS.md` | Full build spec: contracts, modules, milestones, prompts |
 | `docs/IMPLEMENTATION_PLAN.md` | Step-by-step build plan with reference code and who does what |
+| `docs/DEMO_ON_WINDOWS.md` | **Demo laptop setup and run steps (Garv's Windows laptop)** |
 | `docs/DEMO_AND_QA.md` | Walkthrough example, demo script, judge Q&A |
 | `packages/proxy` | The Phantom proxy |
 | `packages/dashboard` | Live request log and Materialize UI |
