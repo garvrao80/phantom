@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
@@ -14,7 +15,7 @@ export type MaterializeDeps = {
 };
 type Command = { command: string; args: string[]; cwd: string; timeoutMs: number; onLine: (line: string) => void; input?: string };
 export type Job = { jobId: string; routes: string[]; phase: string; error?: string; tests?: { passed: number; failed: number; total: number } };
-type Options = { proxyDir: string; generatedDir: string; timeoutMs: number; run: (c: Command) => Promise<void>; emit: (name: string, data: any) => void };
+type Options = { proxyDir: string; generatedDir: string; timeoutMs: number; run: (c: Command) => Promise<void>; emit: (name: 'materialize', data: any) => void };
 
 export function createMaterializer(options: Options) {
   let active: Job | undefined;
@@ -25,7 +26,7 @@ export function createMaterializer(options: Options) {
     const keys = [...new Set(routes)];
     const schemas = structuredClone(deps.schemas.all());
     if (!keys.length || keys.some(k => !Object.hasOwn(schemas, k))) throw new Error('Select at least one locked route');
-    const recordings = keys.flatMap(route => deps.readRecordings({ route, okOnly: true, limit: 200 }).filter(r => r.ok && r.routeKey === route).sort((a,b) => a.seq - b.seq).slice(-20));
+    const recordings = keys.flatMap(route => deps.readRecordings({ route, okOnly: true, limit: 200 }).filter(r => r.ok && r.routeKey === route && r.mode !== 'REAL' && r.mode !== 'REPLAY').sort((a,b) => a.seq - b.seq).slice(-20));
     for (const key of keys) if (!recordings.some(r => r.routeKey === key)) throw new Error(`No successful recording for ${key}`);
     const job: Job = { jobId: `job_${randomUUID()}`, routes: keys, phase: 'context' };
     active = job; last = job;
@@ -58,7 +59,7 @@ export function createMaterializer(options: Options) {
       phase('tests');
       const results = resolve(ctx, 'results.json');
       rmSync(results, { force: true });
-      await options.run({ command: 'pnpm', args: ['exec', 'vitest', 'run', '--config', 'vitest.generated.config.ts', '--reporter=json', `--outputFile=${results}`], cwd: options.proxyDir, timeoutMs: 120000, onLine: line => phase('tests', { line }) });
+      await options.run({ command: process.execPath, args: [resolve(createRequire(import.meta.url).resolve('vitest/package.json'), '..', 'vitest.mjs'), 'run', '--config', 'vitest.generated.config.ts', '--reporter=json', `--outputFile=${results}`], cwd: options.proxyDir, timeoutMs: 120000, onLine: line => phase('tests', { line }) });
       assertEvidence();
       const report = JSON.parse(readFileSync(results, 'utf8'));
       const tests = { passed: report.numPassedTests, failed: report.numFailedTests, total: report.numTotalTests };
@@ -98,8 +99,9 @@ const winQuote = (s: string) => { if (/["%&|<>^!\r\n]/.test(s)) throw new Error(
 export function runCommand(c: Command): Promise<void> {
   return new Promise((done, fail) => {
     const windows = process.platform === 'win32';
-    const child = windows ? spawn(process.env.ComSpec ?? 'cmd.exe', ['/d', '/s', '/c', `"${[c.command, ...c.args].map(winQuote).join(' ')}"`], { cwd: c.cwd, env: process.env, windowsHide: true, windowsVerbatimArguments: true }) : spawn(c.command, c.args, { cwd: c.cwd, env: process.env });
+    const child = windows && !c.command.toLowerCase().endsWith('.exe') ? spawn(process.env.ComSpec ?? 'cmd.exe', ['/d', '/s', '/c', `"${[c.command, ...c.args].map(winQuote).join(' ')}"`], { cwd: c.cwd, env: process.env, windowsHide: true, windowsVerbatimArguments: true }) : spawn(c.command, c.args, { cwd: c.cwd, env: process.env });
     let settled = false;
+    let outputTail = '';
     const finish = (err?: Error) => { if (settled) return; settled = true; clearTimeout(timer); err ? fail(err) : done(); };
     const timer = setTimeout(() => {
       if (windows && child.pid) spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
@@ -108,12 +110,12 @@ export function runCommand(c: Command): Promise<void> {
     }, c.timeoutMs);
     for (const stream of [child.stdout, child.stderr]) {
       let pending = ''; stream.setEncoding('utf8');
-      stream.on('data', (chunk: string) => { pending += chunk; const lines = pending.split(/\r?\n/); pending = lines.pop() ?? ''; for (const line of lines) c.onLine(line); });
+      stream.on('data', (chunk: string) => { outputTail = (outputTail + chunk).slice(-5000); pending += chunk; const lines = pending.split(/\r?\n/); pending = lines.pop() ?? ''; for (const line of lines) c.onLine(line); });
       stream.on('end', () => { if (pending) c.onLine(pending); });
     }
     child.stdin.on('error', () => {}); child.stdin.end(c.input ?? '');
     child.on('error', error => finish(error));
-    child.on('close', code => finish(code === 0 ? undefined : new Error(`${c.command} exited ${code}`)));
+    child.on('close', code => finish(code === 0 ? undefined : new Error(`${c.command} exited ${code}: ${outputTail}`)));
   });
 }
 const controller = createMaterializer({ proxyDir: PROXY_DIR, generatedDir: GENERATED_DIR, timeoutMs: config.codexTimeoutMs, run: runCommand, emit });
