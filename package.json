@@ -1,0 +1,13 @@
+{
+  "name": "phantom",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.9",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "pnpm -r --parallel --stream dev",
+    "test": "pnpm --filter @phantom/proxy test",
+    "reset": "node scripts/reset.mjs",
+    "smoke": "bash scripts/smoke.sh"
+  }
+}
