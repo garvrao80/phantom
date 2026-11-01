@@ -46,7 +46,7 @@ Requires Node 20+, pnpm, and a signed-in Codex CLI. Hosting and storage run loca
 1. Copy `.env.example` to `.env` and set `CEREBRAS_API_KEY` on the machine running Phantom. Never commit the key. A teammate's ignored `.env` is not transferred by GitHub.
 2. Run `pnpm install`.
 3. Run `node scripts/start-local.mjs` for the backend on port 4000.
-4. When the frontend packages have landed, use `pnpm dev` to start all packages (demo app 5173, dashboard 5174).
+4. Alternatively, use `pnpm dev` to start all packages together (proxy 4000, demo app 5173, dashboard 5174); stop the standalone backend first to free port 4000.
 
 PowerShell: use `Copy-Item .env.example .env`; macOS/Linux: `cp .env.example .env`.
 
@@ -66,7 +66,9 @@ With the proxy running and a real Cerebras key loaded:
 node scripts/smoke.mjs
 ```
 
-**Smoke resets development state.** It verifies persisted teams, distinct per-team reads, project creation, and three upvotes. Do not run against anyone else's active demo. API requests are paced 14 seconds apart by default for the trial key's rate limit; `PHANTOM_SMOKE_DELAY_MS` can adjust this after limits are confirmed.
+To avoid affecting an active demo, run the isolated version instead: `node --env-file=.env packages/proxy/node_modules/tsx/dist/cli.mjs scripts/smoke-isolated.ts`. It starts a temporary server and store, then cleans them up.
+
+**The ordinary smoke command resets development state.** It verifies persisted teams, distinct per-team reads, project creation, and three upvotes. Do not run against anyone else's active demo. API requests are paced 14 seconds apart by default for the trial key's rate limit; `PHANTOM_SMOKE_DELAY_MS` can adjust this after limits are confirmed.
 
 ### Backend handoff rehearsal
 
@@ -84,12 +86,13 @@ node --env-file=.env scripts/rehearse.mjs --runs=3 --live-cerebras
 
 Do not publish the scripted-input request latency as Cerebras latency. Generation timings are measured, not guaranteed.
 
-## Current evidence and remaining integration
+## Current verification evidence
 
 - Combined suite: 78 tests passing (61 proxy, 11 dashboard, 6 demo app); strict proxy TypeScript and both frontend builds pass.
 - Materialize failure/activation harness: 8 tests passing.
 - Real Codex generated and verified a one-route backend, then the real dispatcher created new data while preserving existing data. One measured run took 38.293 seconds, with 4 replay/generated tests passing.
 - Three one-route rehearsals with live Cerebras and real Codex passed: handoff times 38.159s, 38.185s, 38.249s; initial API requests 717ms, 659ms, 907ms. Each run passed 4 tests and preserved data after switching to REAL. This is a small local sample, not a general benchmark.
+- Live paced smoke passed all 14 requests, including distinct team cache entries, persisted records, and three upvotes.
 - Both previously found issues are fixed: cache/replay keys include the actual path, and `phantom.notes.md` supplies the demo field contract.
 - Five-route live HTTP rehearsal passed in 40.305 seconds with 12 generated/replay tests. Reset and duplicate-job requests returned 409 during generation.
 - Full live browser verification passed: create team/project, vote, press Materialize, then create/vote on fresh data through REAL handlers. The dashboard showed 13 passing tests, with no API failures or browser page errors.

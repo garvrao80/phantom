@@ -18,7 +18,9 @@ const ANSWER_JSON_SCHEMA = {
 };
 
 export function cerebrasClient(): ModelClient {
-  const client = new OpenAI({ apiKey: config.apiKey || 'missing', baseURL: config.baseURL });
+  // No hidden SDK retries or 10-minute default timeout: a 429 or a stuck call must surface fast
+  // so the UI can show "slow down" instead of freezing. runPhantom does its own single retry.
+  const client = new OpenAI({ apiKey: config.apiKey || 'missing', baseURL: config.baseURL, maxRetries: 0, timeout: config.modelTimeoutMs });
   return {
     async complete(messages) {
       if (!config.apiKey) throw new Error('CEREBRAS_API_KEY is not set');

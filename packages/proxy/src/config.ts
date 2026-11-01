@@ -17,6 +17,7 @@ export const config = {
   replay: process.env.PHANTOM_REPLAY === 'true',
   snapshotLimit: Number(process.env.PHANTOM_SNAPSHOT_LIMIT ?? 50),
   maxTokens: Number(process.env.PHANTOM_MAX_TOKENS ?? 800),
+  modelTimeoutMs: Number(process.env.PHANTOM_MODEL_TIMEOUT_MS ?? 20_000),
   codexTimeoutMs: Number(process.env.CODEX_TIMEOUT_MS ?? 300_000),
   // Override the user's global Codex model/effort for Materialize only (empty = use ~/.codex/config.toml).
   codexModel: process.env.CODEX_MODEL || undefined,
