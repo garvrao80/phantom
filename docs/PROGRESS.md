@@ -5,7 +5,7 @@ All humans and coding agents: read this file before starting and pushing. Update
 ## Current integration status (read before historical notes)
 
 - Core fixes through be419af and Lakshay frontends from 41f599f are integrated with main; Garv verification artifacts and final handoff are delivered in PR #2. Garv implementation and integration validation are complete.
-- Tests: 61 proxy + 11 dashboard + 6 Hub = 78 passing; proxy typecheck and both frontend production builds pass.
+- Latest Windows tests: 66 proxy + 29 dashboard + 8 Hub = 103 passing; proxy typecheck and both frontend production builds pass. Eight additional isolated Materialize failure-path tests pass.
 - Live five-route HTTP rehearsal: 40.305 seconds; 12/12 generated/replay tests; guards 409; fresh REAL requests preserve data.
 - Live browser flow: create team, project, upvote, Materialize, then fresh project/upvote through REAL. Dashboard showed 13 tests passed; no API failures or page errors. Full UI video and screenshot saved locally; screenshot in docs/assets/live-ui-verification.png.
 - Cache collision and votes/upvotes blockers in the historical notes below are resolved by 38b1175. Broader live paced smoke passed: 14 requests, distinct team cache entries, persisted records, and three upvotes.
@@ -207,3 +207,13 @@ Owner / branch or commit / files changed / checks actually run / remaining block
 - Everything shown is real: the new `GET /phantom/backend` returns state, routes, the latest job, the generated source and the test files (nothing generated while no route is REAL).
 - The dashboard is relabelled **CONTROL ROOM**, with "it watches the app's requests. It is not the backend."
 - **Checks:** proxy 63/63 (+2 endpoint tests), dashboard 29/29 (+12: plain-English labels and all page states), builds and typechecks clean. Screenshots were taken at 1920 and 960 wide in all states (mocked data in a separate headless browser). **Not yet run end to end with a live Materialize:** do it in the next rehearsal.
+
+## Garv: final Windows acceptance — 2026-11-01 15:48 IST
+
+- Tested main 79996e7 with the new backend page and Codex nudge logic. Frozen dependency install passed; all 103 workspace tests, both production builds, strict proxy typecheck, preflight, and eight isolated Materialize failure-path tests passed.
+- Added scripts/verify-final-ui.mjs for the complete real-browser acceptance run. No mocked API/model responses. Separate ports 4100/5273/5274 and isolated store; original generated artifacts backed up and restored. Existing demo data was not touched.
+- Real Cerebras created team/project/vote and leaderboard; all **seven routes** locked. Actual Codex Materialize passed **19/19** generated/replay tests in **37.862 seconds**. Dashboard reloaded mid-generation and recovered the running job. Reset and concurrent generation both returned 409 while building.
+- The new Your backend page showed building then live, seven REAL features, the actual source, and test counts. Afterward, fresh team/project creation, three upvotes, repeated distinct-ID reads, sorted leaderboard, and preservation of the original project/vote passed through REAL handlers. All 19 browser API responses succeeded; zero browser page errors.
+- Reset was tested only on the isolated server: backend page returned to No backend yet, with job/code cleared and no routes. Test servers stopped; existing generated artifacts restored.
+- Report and screenshots are in ignored data/final-ui-verification and copied to Garv task outputs as phantom-final-result.json, phantom-final-backend-live.png, and phantom-final-leaderboard-real.png. Earlier video remains valid backup evidence for its earlier six-route run.
+- No blocking defect found in the tested demo flow. No further live model calls are needed unless code changes or a failed rehearsal justifies them.

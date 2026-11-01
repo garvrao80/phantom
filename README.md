@@ -100,7 +100,7 @@ Do not publish the scripted-input request latency as Cerebras latency. Generatio
 
 ## Current verification evidence
 
-- Combined suite: 78 tests passing (61 proxy, 11 dashboard, 6 demo app); strict proxy TypeScript and both frontend builds pass.
+- Combined suite: 103 tests passing (66 proxy, 29 dashboard, 8 demo app); strict proxy TypeScript and both frontend builds pass.
 - Materialize failure/activation harness: 8 tests passing.
 - Real Codex generated and verified a one-route backend, then the real dispatcher created new data while preserving existing data. One measured run took 38.293 seconds, with 4 replay/generated tests passing.
 - Three one-route rehearsals with live Cerebras and real Codex passed: handoff times 38.159s, 38.185s, 38.249s; initial API requests 717ms, 659ms, 907ms. Each run passed 4 tests and preserved data after switching to REAL. This is a small local sample, not a general benchmark.
@@ -128,4 +128,6 @@ This screenshot is from the real demo app and dashboard after live Cerebras resp
 
 Browser verification script: `scripts/verify-ui.mjs` (Playwright installed separately; optional `PHANTOM_PLAYWRIGHT_MODULE` points to its entry file). It uses real responses, captures a video and screenshots in `data/ui-recording/`, and asserts new requests are REAL after completion. Start all three apps on their usual ports first. Run on clean development data.
 
-Known limitation: the dashboard does not yet recover an in-progress job after page reload; leave it open during Materialize. The server's concurrency/reset guards remain authoritative.
+Final Windows acceptance run (1 Nov): all seven routes, including the leaderboard, materialized through real Cerebras and Codex in 37.862 seconds with 19/19 generated and independent replay tests. The new backend page showed the actual generated source. Reload recovery during generation, reset/concurrent-job guards, fresh REAL teams/projects, three votes, preserved earlier data, ranking order, distinct team reads, and clearing the backend page after reset all passed. No browser page errors or failed app API calls occurred. This is one measured local run, not a latency guarantee.
+
+Reproduction: `scripts/verify-final-ui.mjs` requires Playwright (via `PHANTOM_PLAYWRIGHT_MODULE`) and clean isolated apps, defaulting to proxy 4100, Hub 5273, dashboard 5274. The URLs can be overridden with `PHANTOM_VERIFY_PROXY`, `PHANTOM_VERIFY_HUB`, and `PHANTOM_VERIFY_DASH`. Point both Vite apps at the isolated proxy with `PHANTOM_PROXY_TARGET`, and use a separate `PHANTOM_DATA_DIR`. Back up `packages/proxy/generated` before running and restore it afterward with the server stopped; generated artifacts are shared across proxy instances. Set `PHANTOM_VERIFY_RESET=1` only for an isolated instance to also test reset. Evidence goes to ignored `data/final-ui-verification/`.
