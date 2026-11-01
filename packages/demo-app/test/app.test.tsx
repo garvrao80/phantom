@@ -3,6 +3,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../src/App";
 import { api, ApiError, onMode } from "../src/api";
+import { Team } from "../src/pages/Team";
 
 afterEach(() => {
   cleanup();
@@ -14,6 +15,51 @@ const json = (data: unknown, status = 200, mode = "PHANTOM") =>
     headers: { "content-type": "application/json", "x-phantom-mode": mode },
   });
 describe("Hackathon Hub API flow", () => {
+  it("uses the returned project after upvoting without re-fetching the list", async () => {
+    const projects = [
+      { id: "project_1", teamId: "team_1", title: "Phantom", pitch: "Backend", votes: 0 },
+      { id: "project_2", teamId: "team_1", title: "Other", pitch: "Other project", votes: 3 },
+    ];
+    let votes = 6;
+    const fetcher = vi.fn(async (url: string, options: RequestInit = {}) => {
+      if (url === "/api/teams/team_1") return json({ id: "team_1", name: "Team", members: [] });
+      if (url === "/api/teams/team_1/projects") return json(projects);
+      if (url === "/api/projects/project_1/upvote" && options.method === "POST")
+        return json({ ...projects[0], votes: ++votes }, 200, "REAL");
+      throw new Error(`Unexpected ${url}`);
+    });
+    vi.stubGlobal("fetch", fetcher);
+    const report = vi.fn();
+    render(<Team id="team_1" back={() => {}} report={report} />);
+    const user = userEvent.setup();
+    const vote = await screen.findByRole("button", { name: "Upvote Phantom" });
+    await user.click(vote);
+    await waitFor(() => expect(vote.textContent).toContain("7"));
+    await user.click(vote);
+    await waitFor(() => expect(vote.textContent).toContain("8"));
+    expect(screen.getByRole("button", { name: "Upvote Other" }).textContent).toContain("3");
+    expect(fetcher.mock.calls.filter(([url]) => url.endsWith("/projects"))).toHaveLength(1);
+    expect(fetcher).toHaveBeenCalledTimes(4);
+    expect(report).not.toHaveBeenCalled();
+  });
+
+  it("keeps the existing votes when the upvote is rate limited", async () => {
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.endsWith("/upvote")) return json({ error: "rate_limited" }, 429);
+      if (url.endsWith("/projects")) return json([{ id: "project_1", title: "Phantom", pitch: "Backend", votes: 3 }]);
+      return json({ id: "team_1", name: "Team", members: [] });
+    });
+    vi.stubGlobal("fetch", fetcher);
+    const report = vi.fn();
+    render(<Team id="team_1" back={() => {}} report={report} />);
+    const vote = await screen.findByRole("button", { name: "Upvote Phantom" });
+    await userEvent.setup().click(vote);
+    await waitFor(() => expect(report).toHaveBeenCalledOnce());
+    expect(vote.textContent).toContain("3");
+    expect((vote as HTMLButtonElement).disabled).toBe(false);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+
   it("creates a team and project, upvotes, and reads the server leaderboard using the agreed fields", async () => {
     const teams: any[] = [];
     const projects: any[] = [];

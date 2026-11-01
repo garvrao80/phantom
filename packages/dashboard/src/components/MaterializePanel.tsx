@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Job } from "../types";
+import { plainTerminalText } from "../plainTerminalText";
 const phases = ["context", "codex", "tests", "activate"] as const;
 export function MaterializePanel({
   job,
@@ -77,7 +78,7 @@ export function MaterializePanel({
         </label>
       </div>
       <pre className="job-log" ref={log} aria-label="Materialize job output">
-        {job.lines.length ? job.lines.join("\n") : "Waiting for job output…"}
+        {job.lines.length ? plainTerminalText(job.lines.join("\n")) : "Waiting for job output…"}
       </pre>
       <div className="job-result" role="status">
         {job.phase === "done" ? (
