@@ -8,7 +8,7 @@ All humans and coding agents: read this file before starting and pushing. Update
 |---|---|---|---|
 | Abhik | Root/proxy scaffold, shared types, Store, schemas, model loop, routing, events, server | Awaiting owner update; main currently contains plans only | Push scaffold + types early; see Garv integration below |
 | Lakshay | Demo app and dashboard | Awaiting owner update | Use agreed SSE events and POST /phantom/materialize response |
-| Garv | Materialize, replay gate, handler loading, reset/smoke, demo ops | In progress on garv/materialize; initial code local, not yet validated against core | Waiting on core scaffold; independent harness tests underway |
+| Garv | Materialize, replay gate, handler loading, reset/smoke, demo ops | In progress on garv/materialize; 8 isolated tests pass; implementation on branch, core integration pending | Waiting on core scaffold; independent harness tests underway |
 
 ## Garv: integration contract
 
@@ -25,8 +25,20 @@ All humans and coding agents: read this file before starting and pushing. Update
 - 2026-11-01: local Node 24.14.1, pnpm 11.25.0, Codex CLI 0.166.0-alpha.5.1.
 - This Codex CLI exposes `exec --sandbox workspace-write`; it does NOT expose the plan's `--full-auto`. Flags must be checked on the demo laptop too.
 - Root `pnpm test` currently fails because there is no package.json on main. No full integration or live model success is claimed.
-- Reset script syntax checked; remaining tests are pending. No secrets belong in this file.
+- Isolated checks: `node scripts/test-materialize-isolated.mjs ../materialize-harness` — 8/8 pass (activation, generation/test failure, evidence tampering, missing/skipped coverage, child process success/failure). Stub config/events are used: core integration is NOT verified. No secrets belong in this file.
 
 ## Update format
 
 Owner / branch or commit / files changed / checks actually run / remaining blocker / next handoff.
+
+## Garv latest handoff
+
+- Exports: materialize, retryMaterialize, isMaterializing, getMaterializeJob. Catch validation/concurrency errors in the server endpoint (400/409). Reset must refuse while isMaterializing().
+- activate/done events include tests: {passed,failed,total}. getMaterializeJob() exposes the latest job.
+- Cross-platform smoke: node scripts/smoke.mjs (resets development state). Asserts three votes, distinct IDs and repeated per-team reads.
+- src/testing/contract.test.ts is Phantom-owned. Generated code must not replace it.
+- Pending: core integration/typecheck, live Cerebras smoke, timed full demos and backup recording.
+
+- Real Codex spike succeeded: `codex exec --sandbox workspace-write --skip-git-repo-check -C <isolated-dir>` created hello.ts without an approval prompt using existing ChatGPT sign-in. This proves CLI access, not full Materialize correctness.
+- Materialize module strict TypeScript check passes against isolated config/events stubs. Reset and smoke script syntax checks pass.
+- Implementation branch: [garv/materialize](https://github.com/garvrao80/phantom/tree/garv/materialize). Pull/cherry-pick only after coordinating ownership. No core files were created or replaced.
