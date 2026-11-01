@@ -4,11 +4,11 @@ All humans and coding agents: read this file before starting and pushing. Update
 
 ## Current integration status (read before historical notes)
 
-- Core fixes from 38b1175 and Lakshay frontends from 41f599f are combined on garv/final-integration.
+- Core fixes through be419af and Lakshay frontends from 41f599f are combined on garv/final-integration, ready for main. Garv implementation and integration validation are complete.
 - Tests: 61 proxy + 11 dashboard + 6 Hub = 78 passing; proxy typecheck and both frontend production builds pass.
 - Live five-route HTTP rehearsal: 40.305 seconds; 12/12 generated/replay tests; guards 409; fresh REAL requests preserve data.
 - Live browser flow: create team, project, upvote, Materialize, then fresh project/upvote through REAL. Dashboard showed 13 tests passed; no API failures or page errors. Full UI video and screenshot saved locally; screenshot in docs/assets/live-ui-verification.png.
-- Cache collision and votes/upvotes blockers in the historical notes below are resolved by 38b1175. Broader paced smoke is being rechecked.
+- Cache collision and votes/upvotes blockers in the historical notes below are resolved by 38b1175. Broader live paced smoke passed: 14 requests, distinct team cache entries, persisted records, and three upvotes.
 - Known UI limitation: do not reload the dashboard during a job; it does not yet recover job status from the server after reload. Server still blocks reset/concurrent jobs correctly.
 
 ## Ownership / current state
@@ -17,7 +17,7 @@ All humans and coding agents: read this file before starting and pushing. Update
 |---|---|---|---|
 | Abhik | Root/proxy scaffold, shared types, Store, schemas, model loop, routing, events, server | Phases 1.1–1.3, 2, 3, 4, 5 on main; `pnpm test` 58/58 and `tsc` pass; live Cerebras smoke passed; **Materialize wired and verified live end to end** | Core done. Next: help with demo hardening and the 5-route timing; see Abhik handoff below |
 | Lakshay | Demo app and dashboard | Implemented on lakshay/frontends; frontend tests and builds pass; see checks below | Rebased onto Materialize HTTP wiring; full live UI rehearsal pending; see Lakshay handoff below |
-| Garv | Materialize, replay gate, handler loading, reset/smoke, demo ops | Final integration: 78 combined tests, both frontend builds, five-route live HTTP test and real browser flow pass | Cache/contract blockers fixed; integration branch garv/final-integration ready, final smoke running |
+| Garv | Materialize, replay gate, handler loading, reset/smoke, demo ops | Final integration: 78 combined tests, both frontend builds, five-route live HTTP test and real browser flow pass | Complete: cache/contract fixes, 14-request live smoke, full UI rehearsal and backup video verified; merge garv/final-integration into main |
 
 ## Garv: integration contract
 
@@ -143,3 +143,11 @@ Owner / branch or commit / files changed / checks actually run / remaining block
 - **`votes` contract fixed:** a new `phantom.notes.md` at the repo root holds plain-English app notes. They're sent with every phantom prompt, so they pin `votes`, upvote = +1, leaderboard order, and so on. `createApp` loads them by default (override with `PHANTOM_NOTES_FILE` or `notes:`). Tests pass `notes: ''`.
 - **Checks:** core 61/61, typecheck clean. **Garv's live five-route `scripts/verify-http-materialize.ts` PASSES:** phantom latencies 886/2561/813/2117/923 ms, Materialize **62 s**, **16/16** gate tests, reset/duplicate 409, then all five routes REAL with data kept and `votes` going 1 → 2.
 - **Still open (not core):** no `packages/demo-app` or `packages/dashboard` on main, so there's no UI, no full demo rehearsal, and no UI backup video.
+
+## Garv final integration handoff — 2026-11-01
+
+- Branch: garv/final-integration. Combined Abhik core and Lakshay frontends without changing their UI source. Preserved both owners' handoff notes.
+- Live evidence before be419af: five-route Cerebras + Codex HTTP pass (12 tests, 40.305 s); real UI Materialize pass (13 tests), fresh REAL creates/votes, no browser/API errors; broad paced smoke passed 14 requests including distinct-ID cache regression and three persisted votes.
+- Integrated Abhik's be419af SDK retry/20-second timeout change afterward; reran all 78 workspace tests and strict proxy typecheck successfully. No additional model calls were needed for that client configuration change. Both frontend production builds already passed on unchanged UI source.
+- Full actual UI backup video exported locally to outputs/phantom-live-ui-demo.mp4 in Garv's task workspace; screenshot committed at docs/assets/live-ui-verification.png. Scripts/README document reproduction. The video is not a mocked UI.
+- Garv Materialize + ops scope is complete. Frontend job recovery after reload remains a documented limitation: leave the dashboard open during generation. Historical pending notes below/above are superseded by this evidence; other owners retain their own sections.
