@@ -54,7 +54,7 @@ function createContext(opts: AppOptions) {
   const recorder = new Recorder(resolve(opts.dataDir, 'recordings.jsonl'), events);
   const cache = new ResponseCache();
   const realHandlers = opts.realHandlers ?? new Map<string, Handler>();
-  const state = { replay: opts.replay ?? false };
+  const state: { replay: boolean; jobBeforeReset?: string } = { replay: opts.replay ?? false };
   const snapshotLimit = opts.snapshotLimit ?? 50;
 
   // Writes run one at a time so two requests never get the same reserved id.
@@ -225,6 +225,7 @@ export async function createApp(opts: AppOptions) {
 
   app.post('/phantom/reset', async (_request, reply) => {
     if (opts.materializer?.isRunning()) return reply.code(409).send({ error: 'materialize_running' });
+    ctx.state.jobBeforeReset = opts.materializer?.getLastJob()?.jobId;
     ctx.reset();
     return { ok: true };
   });
@@ -251,7 +252,9 @@ export async function createApp(opts: AppOptions) {
   // The generated backend itself, for the "Your backend" page: its state, routes and the code Codex wrote.
   app.get('/phantom/backend', async () => {
     const running = opts.materializer?.isRunning() ?? false;
-    const job = opts.materializer?.getLastJob() ?? null;
+    // A job from before the last reset belongs to an old session and must not show as this session's result.
+    const last = opts.materializer?.getLastJob() ?? null;
+    const job = last && last.jobId !== ctx.state.jobBeforeReset ? last : null;
     const real = ctx.realHandlers.size > 0;
     const state = running ? 'building' : real ? 'live' : job?.phase === 'failed' ? 'failed' : 'none';
     const routes = ctx.routes.list().map(({ key, mode, calls, locked }) => ({
