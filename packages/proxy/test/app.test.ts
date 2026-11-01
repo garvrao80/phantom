@@ -39,6 +39,14 @@ describe('/api/* phantom loop', () => {
     expect(ctx.recorder.read().at(-1)).toMatchObject({ ok: false, mode: 'ERROR', retries: 1 });
   });
 
+  it('fails fast with 429 on a model rate limit, without retrying', async () => {
+    const { app, model } = await testApp([Object.assign(new Error('Too Many Requests'), { status: 429 })]);
+    const r = await app.inject({ method: 'GET', url: '/api/teams' });
+    expect(r.statusCode).toBe(429);
+    expect(r.json().error).toBe('rate_limited');
+    expect(model.calls).toHaveLength(1);
+  });
+
   it('locks the schema and retries answers that break it', async () => {
     const { app, model } = await testApp([
       ok(200, [{ id: 'team_1', name: 'A' }]),

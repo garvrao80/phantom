@@ -6,7 +6,7 @@ All humans and coding agents: read this file before starting and pushing. Update
 
 | Owner | Scope | State / evidence | Handoff |
 |---|---|---|---|
-| Abhik | Root/proxy scaffold, shared types, Store, schemas, model loop, routing, events, server | Phases 1.1–1.3, 2, 3, 4, 5 on main; `pnpm test` 47/47 and `tsc` pass; live Cerebras not yet run (no key on this laptop) | Materialize wiring in `server.ts`/`app.ts` after garv/materialize merges; see Abhik handoff below |
+| Abhik | Root/proxy scaffold, shared types, Store, schemas, model loop, routing, events, server | Phases 1.1–1.3, 2, 3, 4, 5 on main; `pnpm test` 53/53 and `tsc` pass; **live Cerebras smoke passed** (create, list, project, upvote, leaderboard, cache) | Materialize wiring in `server.ts`/`app.ts` after garv/materialize merges; see Abhik handoff below |
 | Lakshay | Demo app and dashboard | Awaiting owner update | Use agreed SSE events and POST /phantom/materialize response |
 | Garv | Materialize, replay gate, handler loading, reset/smoke, demo ops | Core-compatible; 47 core + 8 isolated tests pass, strict typecheck passes; live Codex materialization verified | Ready for Abhik to wire HTTP endpoints; see verified run below |
 
@@ -46,7 +46,10 @@ Owner / branch or commit / files changed / checks actually run / remaining block
 ## Abhik latest handoff
 
 - **On main:** root workspace (`pnpm@9.15.9`), `packages/proxy` with config, types, store, router, schemas, model (Cerebras + `fakeClient`), prompt, snapshot, validate, phantom loop, cache, events, recorder, routes registry, `app.ts` (dispatch + `/phantom/*`), `server.ts`.
-- **Checks run:** `pnpm test` gives 47/47 (unit + Fastify `inject` integration with a fake model, no network). `pnpm exec tsc -p .` is clean. A live boot without a key gives health ok, `/api/*` → 502 `phantom_invalid` recorded and streamed over SSE, CORS preflight 204. **Not run:** any live Cerebras call (no `.env` on this laptop), so the 0.2 spike answers in AGENTS.md section 22 are still open.
+- **Checks run:** `pnpm test` gives 47/47 (unit + Fastify `inject` integration with a fake model, no network). `pnpm exec tsc -p .` is clean. A live boot without a key gives health ok, `/api/*` → 502 `phantom_invalid` recorded and streamed over SSE, CORS preflight 204. **Live (1 Nov):** Cerebras spike done; results are in AGENTS.md section 22. The paced smoke through the proxy passed: ids `team_1`/`project_1`, all routes locked, upvote increments `votes`, the leaderboard is derived, and the repeat read is CACHED. Median latency 1.29 s.
+- **⚠ Rate limit: the trial key allows 5 requests/min, 150/hour.** Clicking fast during the demo will hit it. The proxy now returns a fast `429 {error:"rate_limited"}` (no retry) with mode ERROR. Lakshay: show a friendly "slow down" toast on 429. Mitigations: GET cache, replay mode, pre-warm routes before presenting; ask the Cerebras team at the venue for a higher limit.
+- **Fixed after live test:** `POST /projects/:id/upvote` used to reserve an id in a new `upvote` collection. Only plural last segments now become new collections, so action routes update the existing record.
+- `.env` now sets `CEREBRAS_REASONING_EFFORT=low` (cuts reasoning tokens about 3×).
 - **Run:** `pnpm install`, then `pnpm --filter @phantom/proxy dev` (port 4000). Data goes to `data/`; override it with `PHANTOM_DATA_DIR`.
 - **For Garv:**
   - `Store.fromData/dump/reserveId/applyOps` are present.

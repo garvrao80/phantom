@@ -19,9 +19,13 @@ export function candidateCollections(store: Store, path: string, body: unknown) 
         for (const c of existing) if (singular(c) === base || c === base) matched.add(c);
       }
 
+  // A new collection only comes from a plural last segment (POST /teams, POST /teams/:id/projects).
+  // Singular action segments (POST /projects/:id/upvote) update existing records instead.
   const last = segs.at(-1);
   const create = new Set(matched);
-  if (last && COLLECTION_RE.test(last)) create.add(existing.find((c) => singular(c) === last) ?? last);
+  const existingMatch = last && existing.find((c) => c === last || singular(c) === last);
+  if (existingMatch) create.add(existingMatch);
+  else if (last && COLLECTION_RE.test(last) && last.endsWith('s')) create.add(last);
 
   const send = store.sizeBytes() < SEND_ALL_BELOW_BYTES ? existing : [...matched];
   return { send, create: [...create] };

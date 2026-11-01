@@ -46,6 +46,7 @@ export async function runPhantom(req: ApiRequest, deps: PhantomDeps): Promise<Ph
   let attempts = 0;
   const tokens = { in: 0, out: 0 };
   let answer: Answer | undefined;
+  let rateLimited = false;
   while (attempts < MAX_ATTEMPTS && !answer) {
     attempts++;
     try {
@@ -58,6 +59,12 @@ export async function runPhantom(req: ApiRequest, deps: PhantomDeps): Promise<Ph
       if (problem) retryReason = problem;
       else answer = a;
     } catch (e) {
+      // A rate limit won't clear in milliseconds: fail fast instead of burning the retry.
+      if ((e as { status?: number }).status === 429) {
+        rateLimited = true;
+        retryReason = 'model rate limit reached, try again in a few seconds';
+        break;
+      }
       retryReason = `invalid answer: ${(e as Error).message}`;
     }
   }
@@ -71,7 +78,9 @@ export async function runPhantom(req: ApiRequest, deps: PhantomDeps): Promise<Ph
   };
 
   if (!answer) {
-    const res = { status: 502, body: { error: 'phantom_invalid', detail: retryReason } };
+    const res = rateLimited
+      ? { status: 429, body: { error: 'rate_limited', detail: retryReason } }
+      : { status: 502, body: { error: 'phantom_invalid', detail: retryReason } };
     return {
       res,
       rec: { ...base, mode: 'ERROR', ok: false, res, storeOps: [], latencyMs: Date.now() - t0, error: retryReason },

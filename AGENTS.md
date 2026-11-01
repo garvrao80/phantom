@@ -651,11 +651,11 @@ Fill these in during M0.
 
 | Question | Answer |
 |---|---|
-| Exact Cerebras model id for gpt-oss-120b | |
-| Does Cerebras accept `response_format: json_schema` for it? | |
-| Does it accept `reasoning_effort`? | |
-| Requests/min and tokens/min limit on our key | |
-| Exact `codex exec` flags for non-interactive, auto-approved edits in a directory | |
+| Exact Cerebras model id for gpt-oss-120b | `gpt-oss-120b` (the key's `/models` also lists `qwen-3.8-27b`). Checked 1 Nov, Abhik |
+| Does Cerebras accept `response_format: json_schema` for it? | Yes, returned valid JSON (non-strict schema). `json_object` also works; we default to `json_object` (`CEREBRAS_JSON_SCHEMA=false`) |
+| Does it accept `reasoning_effort`? | Yes. `low` cut reasoning tokens 109 → 39 and latency 1.5 s → 0.4 s on a tiny prompt. On by default via `CEREBRAS_REASONING_EFFORT=low` |
+| Requests/min and tokens/min limit on our key | **5 requests/min, 150/hour, 2,400/day**; 30k tokens/min, 1M tokens/day (from `x-ratelimit-*` headers on the trial key). **5/min is the demo bottleneck**: cache, replay mode, and the proxy returns a fast 429 `rate_limited` instead of retrying |
+| Exact `codex exec` flags for non-interactive, auto-approved edits in a directory | Garv: `codex exec --sandbox workspace-write --skip-git-repo-check -C <dir>` (no `--full-auto` on his CLI build). See docs/PROGRESS.md |
 | Is `@openai/codex-sdk` simpler than spawning the CLI? | |
-| Measured median phantom latency | |
+| Measured median phantom latency | Live smoke on 1 Nov (5 calls, reasoning low): median **1.29 s**; reads 0.65–0.72 s, writes 1.29–1.94 s; cached reads ~1 ms. About 600 tokens in and 200 out per call |
 | Materialize wall time for 5 routes | |
